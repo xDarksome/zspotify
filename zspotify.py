@@ -297,14 +297,22 @@ def get_episode_info(episode_id_str):
 
 
 def get_show_episodes(access_token, show_id_str):
+    """ returns episodes of a show """
     episodes = []
+    offset = 0
+    limit = 50
 
-    headers = {'Authorization': f'Bearer {access_token}'}
-    resp = requests.get(
-        f'https://api.spotify.com/v1/shows/{show_id_str}/episodes', headers=headers).json()
+    while True:
+        headers = {'Authorization': f'Bearer {access_token}'}
+        params = {'limit': limit, 'offset': offset}
+        resp = requests.get(
+            f'https://api.spotify.com/v1/shows/{show_id_str}/episodes', headers=headers, params=params).json()
+        offset += limit
+        for episode in resp["items"]:
+            episodes.append(episode["id"])
 
-    for episode in resp["items"]:
-        episodes.append(episode["id"])
+        if len(resp['items']) < limit:
+            break
 
     return episodes
 
