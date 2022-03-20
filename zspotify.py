@@ -530,7 +530,7 @@ def convert_audio_format(filename):
     raw_audio.export(filename, format=MUSIC_FORMAT, bitrate=bitrate)
 
 
-def set_audio_tags(filename, artists, name, album_name, release_year, disc_number, track_number):
+def set_audio_tags(filename, artists, name, album_name, release_year, disc_number, track_number, track_id_str):
     """ sets music_tag metadata """
     #print("###   SETTING MUSIC TAGS   ###")
     tags = music_tag.load_file(filename)
@@ -540,6 +540,7 @@ def set_audio_tags(filename, artists, name, album_name, release_year, disc_numbe
     tags['year'] = release_year
     tags['discnumber'] = disc_number
     tags['tracknumber'] = track_number
+    tags['comment'] = 'id[spotify.com:track:'+track_id_str+']'
     tags.save()
 
 
@@ -741,7 +742,7 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
                     if not RAW_AUDIO_AS_IS:
                         convert_audio_format(filename)
                         set_audio_tags(filename, artists, name, album_name,
-                                       release_year, disc_number, track_number)
+                                       release_year, disc_number, track_number, track_id_str)
                         set_music_thumbnail(filename, image_url)
 
                     if not OVERRIDE_AUTO_WAIT:
