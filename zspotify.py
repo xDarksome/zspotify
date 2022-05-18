@@ -30,9 +30,9 @@ sanitize = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
 ROOT_PATH = "/download/ZSpotify Music/"
 ROOT_PODCAST_PATH = "ZSpotify Podcasts/"
 SKIP_EXISTING_FILES = True
-MUSIC_FORMAT = "mp3"  # or "ogg"
+MUSIC_FORMAT = os.getenv('MUSIC_FORMAT') or "mp3" # "mp3" | "ogg"
 FORCE_PREMIUM = False # set to True if not detecting your premium account automatically
-RAW_AUDIO_AS_IS = False # set to True if you wish you save the raw audio without re-encoding it.
+RAW_AUDIO_AS_IS = False or os.getenv('RAW_AUDIO_AS_IS') == "y" # set to True if you wish you save the raw audio without re-encoding it.
 # This is how many seconds ZSpotify waits between downloading tracks so spotify doesn't get out the ban hammer
 ANTI_BAN_WAIT_TIME = 5
 ANTI_BAN_WAIT_TIME_ALBUMS = 30
@@ -530,7 +530,7 @@ def convert_audio_format(filename):
     raw_audio.export(filename, format=MUSIC_FORMAT, bitrate=bitrate)
 
 
-def set_audio_tags(filename, artists, name, album_name, release_year, disc_number, track_number):
+def set_audio_tags(filename, artists, name, album_name, release_year, disc_number, track_number, track_id_str):
     """ sets music_tag metadata """
     #print("###   SETTING MUSIC TAGS   ###")
     tags = music_tag.load_file(filename)
@@ -540,6 +540,7 @@ def set_audio_tags(filename, artists, name, album_name, release_year, disc_numbe
     tags['year'] = release_year
     tags['discnumber'] = disc_number
     tags['tracknumber'] = track_number
+    tags['comment'] = 'id[spotify.com:track:'+track_id_str+']'
     tags.save()
 
 
@@ -741,7 +742,7 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
                     if not RAW_AUDIO_AS_IS:
                         convert_audio_format(filename)
                         set_audio_tags(filename, artists, name, album_name,
-                                       release_year, disc_number, track_number)
+                                       release_year, disc_number, track_number, track_id_str)
                         set_music_thumbnail(filename, image_url)
 
                     if not OVERRIDE_AUTO_WAIT:
