@@ -342,6 +342,8 @@ def download_episode(episode_id_str):
         data_left = total_size
         downloaded = 0
         _CHUNK_SIZE = CHUNK_SIZE
+        fail = 0
+
         with open(ROOT_PODCAST_PATH + extra_paths + filename + ".wav", 'wb') as file, tqdm(
                 desc=filename,
                 total=total_size,
@@ -355,8 +357,10 @@ def download_episode(episode_id_str):
                 bar.update(file.write(data))
                 if (total_size - downloaded) < _CHUNK_SIZE:
                     _CHUNK_SIZE = total_size - downloaded
-                if len(data) == 0 : break
-
+                if len(data) == 0 : 
+                    fail += 1
+                if fail > 10:
+                    break
 
                 
         #file.write(stream.input_stream.stream().read())
@@ -739,6 +743,7 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
                     total_size = stream.input_stream.size
                     downloaded = 0
                     _CHUNK_SIZE = CHUNK_SIZE
+                    fail = 0
                     with open(filename, 'wb') as file, tqdm(
                             desc=song_name,
                             total=total_size,
@@ -755,7 +760,10 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
 
                             if (total_size - downloaded) < _CHUNK_SIZE:
                                 _CHUNK_SIZE = total_size - downloaded
-                            if len(data) == 0 : break
+                            if len(data) == 0 : 
+                                fail += 1                                
+                            if fail > 10:
+                                break
 
 
                     if not RAW_AUDIO_AS_IS:
