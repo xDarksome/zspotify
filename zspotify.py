@@ -356,9 +356,9 @@ def download_episode(episode_id_str):
                 data = stream.input_stream.stream().read(_CHUNK_SIZE)
                 downloaded += len(data)
                 bar.update(file.write(data))
-                #print(f"[{total_size}][{_CHUNK_SIZE}] [{len(data)}] [{total_size - downloaded}] [{downloaded}]")
                 if (total_size - downloaded) < _CHUNK_SIZE:
                     _CHUNK_SIZE = total_size - downloaded
+                #print(f"[{total_size}][{_CHUNK_SIZE}] [{len(data)}] [{total_size - downloaded}] [{downloaded}]")
                 if len(data) == 0 : 
                     fail += 1
                 if fail > REINTENT_DOWNLOAD:
@@ -777,10 +777,10 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
                     if not OVERRIDE_AUTO_WAIT:
                         time.sleep(ANTI_BAN_WAIT_TIME)
         except:
-                os.remove(filename
-            print("###   SKIPPING:", song_name, "(GENEAL DOWNLOAD ERROR)   ###")
-            if os.path.exists(filename)
-            print(f" download_track GEERAL DOWNLOAD ERROR: [{track_id_str}][{extra_paths}][{prefix}][{prefix_value}][{disable_progressbar}]")
+            print("###   SKIPPING:", song_name, "(GENERAL DOWNLOAD ERROR)   ###")
+            if os.path.exists(filename):
+                os.remove(filename)
+            print(f" download_track GENERAL DOWNLOAD ERROR: [{track_id_str}][{extra_paths}][{prefix}][{prefix_value}][{disable_progressbar}]")
             download_track(track_id_str, extra_paths,prefix=prefix, prefix_value=prefix_value, disable_progressbar=disable_progressbar)
 
 
@@ -880,5 +880,8 @@ def main():
     """ Main function """
     check_raw()
     login()
-if __name__ == "__main__":    main()
     client()
+
+
+if __name__ == "__main__":
+    main()
