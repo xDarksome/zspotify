@@ -28,7 +28,7 @@ SESSION: Session = None
 sanitize = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
 
 ROOT_PATH = "/download/ZSpotify Music/"
-ROOT_PODCAST_PATH = "ZSpotify Podcasts/"
+ROOT_PODCAST_PATH = "/download/ZSpotify Podcasts/"
 SKIP_EXISTING_FILES = True
 MUSIC_FORMAT = os.getenv('MUSIC_FORMAT') or "mp3" # "mp3" | "ogg"
 FORCE_PREMIUM = False # set to True if not detecting your premium account automatically
