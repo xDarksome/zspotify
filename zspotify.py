@@ -339,6 +339,9 @@ def download_episode(episode_id_str):
         os.makedirs(ROOT_PODCAST_PATH + extra_paths,exist_ok=True)
 
         total_size = stream.input_stream.size
+        data_left = total_size
+        downloaded = 0
+        _CHUNK_SIZE = CHUNK_SIZE
         with open(ROOT_PODCAST_PATH + extra_paths + filename + ".wav", 'wb') as file, tqdm(
                 desc=filename,
                 total=total_size,
@@ -346,10 +349,17 @@ def download_episode(episode_id_str):
                 unit_scale=True,
                 unit_divisor=1024
         ) as bar:
-            for _ in range(int(total_size / CHUNK_SIZE) + 1):
-                bar.update(file.write(
-                    stream.input_stream.stream().read(CHUNK_SIZE)))
+            while downloaded <= total_size:
+                data = stream.input_stream.stream().read(_CHUNK_SIZE)
+                downloaded += len(data)
+                bar.update(file.write(data))
+                if (total_size - downloaded) < _CHUNK_SIZE:
+                    _CHUNK_SIZE = total_size - downloaded
+                if len(data) == 0 : break
 
+
+                
+        #file.write(stream.input_stream.stream().read())
         # convert_audio_format(ROOT_PODCAST_PATH +
         #                     extra_paths + filename + ".wav")
 
@@ -727,6 +737,8 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
                     os.makedirs(ROOT_PATH + extra_paths,exist_ok=True)
 
                     total_size = stream.input_stream.size
+                    downloaded = 0
+                    _CHUNK_SIZE = CHUNK_SIZE
                     with open(filename, 'wb') as file, tqdm(
                             desc=song_name,
                             total=total_size,
@@ -735,9 +747,16 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
                             unit_divisor=1024,
                             disable=disable_progressbar
                     ) as bar:
-                        for _ in range(int(total_size / CHUNK_SIZE) + 1):
-                            bar.update(file.write(
-                                stream.input_stream.stream().read(CHUNK_SIZE)))
+                        while downloaded <= total_size:
+                            data = stream.input_stream.stream().read(_CHUNK_SIZE)
+
+                            downloaded += len(data)
+                            bar.update(file.write(data))
+
+                            if (total_size - downloaded) < _CHUNK_SIZE:
+                                _CHUNK_SIZE = total_size - downloaded
+                            if len(data) == 0 : break
+
 
                     if not RAW_AUDIO_AS_IS:
                         convert_audio_format(filename)

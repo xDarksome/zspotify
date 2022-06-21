@@ -3,6 +3,17 @@ Fork of https://github.com/Footsiefat/zspotify
 
 Spotify song downloader without injecting into the windows client
 
+
+## **Docker:**
+
+```
+  docker run -it -v $(pwd)/docker/config:/config -v $(pwd)/docker/download:/download jsavargas/zspotify
+  
+  docker-compose run --rm zspotify
+```
+
+
+
 ```
 Requirements:
 
@@ -41,16 +52,11 @@ Special hardcoded options:
 
 
 
-## **Docker:**
-
-```
-  docker run -it -v $(pwd)/docker/config:/config -v $(pwd)/docker/download:/download jsavargas/zspotify
-  
-  docker-compose run --rm zspotify
-```
-
 
 ## **Changelog:**
+
+**v1.9 (20 Jun 2022):**
+- Fix fails at 87%
 
 **v1.8 (23 Oct 2021):**
 - exclude album_type single
