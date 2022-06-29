@@ -22,13 +22,14 @@ from librespot.core import Session
 from librespot.metadata import TrackId, EpisodeId
 from pydub import AudioSegment
 from tqdm import tqdm
-
+from appdirs import user_config_dir
 
 SESSION: Session = None
 sanitize = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
 
-ROOT_PATH = "/download/ZSpotify Music/"
-ROOT_PODCAST_PATH = "/download/ZSpotify Podcasts/"
+
+ROOT_PATH = os.path.expanduser("~/Music/ZSpotify Music/")
+ROOT_PODCAST_PATH = os.path.expanduser("~/Music/ZSpotify Podcasts/")
 SKIP_EXISTING_FILES = True
 MUSIC_FORMAT = os.getenv('MUSIC_FORMAT') or "mp3" # "mp3" | "ogg"
 FORCE_PREMIUM = False # set to True if not detecting your premium account automatically
@@ -39,6 +40,9 @@ ANTI_BAN_WAIT_TIME_ALBUMS = 30
 # Set this to True to not wait at all between tracks and just go balls to the wall
 OVERRIDE_AUTO_WAIT = False
 CHUNK_SIZE = 50000
+
+CONFIG_DIR = user_config_dir("ZSpotify")
+CREDENTIALS = os.path.join(CONFIG_DIR, "credentials.json")
 
 LIMIT = 50 
 
@@ -95,8 +99,8 @@ def login():
     """ Authenticates with Spotify and saves credentials to a file """
     global SESSION
 
-    if os.path.isfile("/config/credentials.json"):
-        shutil.copyfile('/config/credentials.json', 'credentials.json')
+    if os.path.isfile(CREDENTIALS):
+        shutil.copyfile(CREDENTIALS, 'credentials.json')
 
     if os.path.isfile("credentials.json"):
         try:
@@ -109,7 +113,7 @@ def login():
         password = getpass()
         try:
             SESSION = Session.Builder().user_pass(user_name, password).create()
-            shutil.copyfile('credentials.json','/config/credentials.json')
+            shutil.copyfile('credentials.json',CREDENTIALS)
             return
         except RuntimeError:
             pass
@@ -776,8 +780,8 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
 
                     if not OVERRIDE_AUTO_WAIT:
                         time.sleep(ANTI_BAN_WAIT_TIME)
-        except:
-            print("###   SKIPPING:", song_name, "(GENERAL DOWNLOAD ERROR)   ###")
+        except Exception as e1:
+            print("###   SKIPPING:", song_name, "(GENERAL DOWNLOAD ERROR)   ###", e1)
             if os.path.exists(filename):
                 os.remove(filename)
             print(f" download_track GENERAL DOWNLOAD ERROR: [{track_id_str}][{extra_paths}][{prefix}][{prefix_value}][{disable_progressbar}]")
