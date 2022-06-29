@@ -96,8 +96,8 @@ def login():
     """ Authenticates with Spotify and saves credentials to a file """
     global SESSION
 
-    if os.path.isfile("/config/credentials.json"):
-        shutil.copyfile('/config/credentials.json', 'credentials.json')
+    if os.path.isfile("./config/credentials.json"):
+        shutil.copyfile('./config/credentials.json', 'credentials.json')
 
     if os.path.isfile("credentials.json"):
         try:
