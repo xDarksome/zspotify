@@ -27,10 +27,11 @@ from tqdm import tqdm
 SESSION: Session = None
 sanitize = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
 
-ROOT_PATH = "/download/ZSpotify Music/"
-ROOT_PODCAST_PATH = "/download/ZSpotify Podcasts/"
+ROOT_PATH = os.path.join(os.path.expanduser('~'), "Music") # change if you want any other paths than this...
+ROOT_PODCAST_PATH = "" # fill it or pass as an env variable...
 SKIP_EXISTING_FILES = True
-MUSIC_FORMAT = os.getenv('MUSIC_FORMAT') or "mp3" # "mp3" | "ogg"
+# flac is better than any other, if you wish far more awesome experience, use RAW_AUDIO_AS_IS as true...
+MUSIC_FORMAT = os.getenv('MUSIC_FORMAT') or "flac" # "mp3" | "ogg" | "flac"
 FORCE_PREMIUM = False # set to True if not detecting your premium account automatically
 RAW_AUDIO_AS_IS = False or os.getenv('RAW_AUDIO_AS_IS') == "y" # set to True if you wish you save the raw audio without re-encoding it.
 # This is how many seconds ZSpotify waits between downloading tracks so spotify doesn't get out the ban hammer
@@ -95,8 +96,8 @@ def login():
     """ Authenticates with Spotify and saves credentials to a file """
     global SESSION
 
-    if os.path.isfile("/config/credentials.json"):
-        shutil.copyfile('/config/credentials.json', 'credentials.json')
+    if os.path.isfile("./config/credentials.json"):
+        shutil.copyfile('./config/credentials.json', 'credentials.json')
 
     if os.path.isfile("credentials.json"):
         try:
