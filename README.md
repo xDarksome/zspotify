@@ -7,7 +7,7 @@ Spotify song downloader without injecting into the windows client
 ## **Docker:**
 
 ```
-  docker run -it -v $(pwd)/docker/config:/config -v $(pwd)/docker/download:/download jsavargas/zspotify
+  docker run --rm -it -v $(pwd)/docker/config:/root/.config/ZSpotify -v $(pwd)/docker/download:/root/Music jsavargas/zspotify
   
   docker-compose run --rm zspotify
 ```
