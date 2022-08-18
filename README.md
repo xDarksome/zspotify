@@ -37,6 +37,7 @@ Command line usage:
 Extra command line options:
   -p, --playlist       Downloads a saved playlist from your account
   -ls, --liked-songs   Downloads all the liked songs from your account
+  -pid, --playlist-id [id] [folder_name]  Downloads a playlist from their id and saves in folder_name. This playlist can be created by other user, not only your playlists. 
 
 Special hardcoded options:
   ROOT_PATH           Change this path if you don't like the default directory where ZSpotify saves the music
@@ -54,6 +55,9 @@ Special hardcoded options:
 
 
 ## **Changelog:**
+
+**v1.9.1 (19 Aug 2022)**
+- Added extra option to download a playlist with the playlist-id. This playlist doesn't need be yours, it can be from other user.
 
 **v1.9 (20 Jun 2022):**
 - Fix fails at 87%
