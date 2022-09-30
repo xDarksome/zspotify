@@ -14,6 +14,7 @@ import sys
 import time
 import shutil
 from getpass import getpass
+import datetime
 
 import music_tag
 import requests
@@ -31,8 +32,10 @@ sanitize = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
 CONFIG_DIR = user_config_dir("ZSpotify")
 ROOT_PATH = os.path.expanduser("~/Music/ZSpotify Music/")
 ROOT_PODCAST_PATH = os.path.expanduser("~/Music/ZSpotify Podcasts/")
+ALBUM_IN_FILENAME = True # Puts album name in filename, otherwise name is (artist) - (track name).
 
 SKIP_EXISTING_FILES = True
+SKIP_PREVIOUSLY_DOWNLOADED = True
 MUSIC_FORMAT = os.getenv('MUSIC_FORMAT') or "mp3" # "mp3" | "ogg"
 FORCE_PREMIUM = False # set to True if not detecting your premium account automatically
 RAW_AUDIO_AS_IS = False or os.getenv('RAW_AUDIO_AS_IS') == "y" # set to True if you wish you save the raw audio without re-encoding it.
@@ -703,11 +706,37 @@ def get_saved_tracks(access_token):
 
     return songs
 
+def get_previously_downloaded() -> list[str]:
+    """ Returns list of all time downloaded songs, sourced from the hidden archive file located at the download
+    location. """
+    global ROOT_PATH
+
+    ids = []
+    archive_path = os.path.join(ROOT_PATH, '.song_archive')
+
+    if os.path.exists(archive_path):
+        with open(archive_path, 'r', encoding='utf-8') as f:
+            ids = [line.strip().split('\t')[0] for line in f.readlines()]
+
+    return ids
+
+def add_to_archive(song_id: str, filename: str, author_name: str, song_name: str) -> None:
+    """ Adds song id to all time installed songs archive """
+
+    archive_path = os.path.join(os.path.dirname(__file__), ROOT_PATH, '.song_archive')
+
+    if os.path.exists(archive_path):
+        with open(archive_path, 'a', encoding='utf-8') as file:
+            file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
+    else:
+        with open(archive_path, 'w', encoding='utf-8') as file:
+            file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
+
 
 # Functions directly related to downloading stuff
 def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value='', disable_progressbar=False):
     """ Downloads raw song audio from Spotify """
-    global ROOT_PATH, SKIP_EXISTING_FILES, MUSIC_FORMAT, RAW_AUDIO_AS_IS, ANTI_BAN_WAIT_TIME, OVERRIDE_AUTO_WAIT
+    global ROOT_PATH, SKIP_EXISTING_FILES, SKIP_PREVIOUSLY_DOWNLOADED, MUSIC_FORMAT, RAW_AUDIO_AS_IS, ANTI_BAN_WAIT_TIME, OVERRIDE_AUTO_WAIT, ALBUM_IN_FILENAME
     try:
     	# TODO: ADD disc_number IF > 1 
         artists, album_name, name, image_url, release_year, disc_number, track_number, scraped_song_id, is_playable = get_song_info(
@@ -718,9 +747,13 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
             _track_number = str(track_number).zfill(2)
             song_name = f'{_artist} - {album_name} - {_track_number}. {name}.{MUSIC_FORMAT}' 
             filename = os.path.join(ROOT_PATH, extra_paths, song_name)
-        else:
-            song_name = f'{_artist} - {album_name} - {name}.{MUSIC_FORMAT}' 
+        elif ALBUM_IN_FILENAME:
+            song_name = f'{_artist} - {album_name} - {name}.{MUSIC_FORMAT}'
             filename = os.path.join(ROOT_PATH, extra_paths, song_name)
+        else:
+            song_name = f'{_artist} - {name}.{MUSIC_FORMAT}'
+            filename = os.path.join(ROOT_PATH, extra_paths, song_name)
+        check_all_time = scraped_song_id in get_previously_downloaded()
 
 
     except Exception as e:
@@ -739,6 +772,8 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
             else:
                 if os.path.isfile(filename) and os.path.getsize(filename) and SKIP_EXISTING_FILES:
                     print("###   SKIPPING: (SONG ALREADY EXISTS) :", song_name, "   ###")
+                elif check_all_time and SKIP_PREVIOUSLY_DOWNLOADED:
+                    print('###   SKIPPING: ' + song_name + ' (SONG ALREADY DOWNLOADED ONCE)   ###')
                 else:
                     if track_id_str != scraped_song_id:
                         track_id_str = scraped_song_id
@@ -787,6 +822,8 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
 
                     if not OVERRIDE_AUTO_WAIT:
                         time.sleep(ANTI_BAN_WAIT_TIME)
+
+                    add_to_archive(scraped_song_id, os.path.basename(filename), artists[0], name)
         except Exception as e1:
             print("###   SKIPPING:", song_name, "(GENERAL DOWNLOAD ERROR)   ###", e1)
             if os.path.exists(filename):
