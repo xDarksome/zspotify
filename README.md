@@ -56,6 +56,11 @@ Special hardcoded options:
 
 ## **Changelog:**
 
+**v1.9.2 (19 Aug 2022)**
+- Added playlist_id support (https://github.com/VicDominguez)
+- Fix -ls argument (https://github.com/axsddlr)
+- Song Archive, to SKIP_PREVIOUSLY_DOWNLOADED (https://github.com/diebolo)
+
 **v1.9.1 (19 Aug 2022)**
 - Added extra option to download a playlist with the playlist-id. This playlist doesn't need be yours, it can be from other user.
 
