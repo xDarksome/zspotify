@@ -138,6 +138,11 @@ def client():
     if len(sys.argv) > 1:
         if sys.argv[1] == "-p" or sys.argv[1] == "--playlist":
             download_from_user_playlist()
+        elif sys.argv[1] == "-pid" or sys.argv[1] == "--playlist_id":
+            if len(sys.argv) > 3:
+                download_playlist_by_id(sys.argv[2], sys.argv[3])
+            else:
+                print("With the flag playlist_id you must pass the playlist_id and the name of the folder where you will have the songs. Usually these name is the name of the playlist itself.")
         elif sys.argv[1] == "-ls" or sys.argv[1] == "--liked-songs":
             for song in get_saved_tracks(token_for_saved):
                 if not song['track']['name']:
@@ -843,6 +848,16 @@ def download_playlist(playlists, playlist_choice):
                 playlists[int(playlist_choice) - 1]['name'].strip()) + "/")
         print("\n")
 
+def download_playlist_by_id(playlist_id, playlist_name):
+    """Downloads all the songs from a playlist using playlist id"""
+    token = SESSION.tokens().get("user-read-email")
+
+    playlist_songs = get_playlist_songs(token, playlist_id)
+
+    for song in playlist_songs:
+        if song['track']['id'] is not None:
+            download_track(song['track']['id'], sanitize_data(playlist_name.strip()) + "/")
+        print("\n")
 
 def download_from_user_playlist():
     """ Select which playlist(s) to download """
