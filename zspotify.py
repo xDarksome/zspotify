@@ -5,6 +5,8 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
+__version__ = "1.9.2"
+
 import json
 import os
 import os.path
@@ -96,6 +98,7 @@ def splash():
  ███         ██ ██      ██    ██    ██    ██ ██         ██
 ███████ ███████ ██       ██████     ██    ██ ██         ██
     """)
+    print(f"version: {__version__}")
 
 
 # two mains functions for logging in and doing client stuff
