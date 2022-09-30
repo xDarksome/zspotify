@@ -126,6 +126,7 @@ def client():
     splash()
 
     token = SESSION.tokens().get("user-read-email")
+    token_for_saved = SESSION.tokens().get("user-library-read")
 
     if check_premium():
         print("[ DETECTED PREMIUM ACCOUNT - USING VERY_HIGH QUALITY ]\n\n")
@@ -138,7 +139,7 @@ def client():
         if sys.argv[1] == "-p" or sys.argv[1] == "--playlist":
             download_from_user_playlist()
         elif sys.argv[1] == "-ls" or sys.argv[1] == "--liked-songs":
-            for song in get_saved_tracks(token):
+            for song in get_saved_tracks(token_for_saved):
                 if not song['track']['name']:
                     print(
                         "###   SKIPPING:  SONG DOES NOT EXISTS ON SPOTIFY ANYMORE   ###")
