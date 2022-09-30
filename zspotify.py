@@ -5,7 +5,7 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
-__version__ = "1.9.2"
+__version__ = "1.9.3"
 
 import json
 import os
@@ -945,4 +945,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+
+    except KeyboardInterrupt:
+        print('')
+        sys.exit(0)
+    except Exception as error:
+        print(f"[!] ERROR {error} ")
+
+

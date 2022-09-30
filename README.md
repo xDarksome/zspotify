@@ -56,6 +56,9 @@ Special hardcoded options:
 
 ## **Changelog:**
 
+**v1.9.3 (30 Sep 2022)**
+- add KeyboardInterrupt control - Control + C
+
 **v1.9.2 (19 Aug 2022)**
 - Added playlist_id support (https://github.com/VicDominguez)
 - Fix -ls argument (https://github.com/axsddlr)
@@ -74,7 +77,6 @@ Special hardcoded options:
 - Show single progress bar for entire album.
 - Added a small delay between downloading each track when downloading in bulk to help with downloading issues and potential bans.
 
-
 **v1.7 (21 Oct 2021):**
 - Added docker support
 - Added range download example 1-10 example: SELECT ITEM BY ID: 1-10
@@ -91,5 +93,4 @@ Special hardcoded options:
 - Added option to just download the raw audio with no re-encoding at all.
 - Added Shebang line so it runs smoother on Linux.
 - Made it download the entire track at once now so it is more efficent and fixed a bug users encountered.
-
 
