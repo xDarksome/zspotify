@@ -7,7 +7,7 @@ Spotify song downloader without injecting into the windows client
 
 ![](images/image02.png)
 
-## **Docker:**
+## Docker:
 
 ```
   docker run --rm -it -v $(pwd)/docker/config:/root/.config/ZSpotify -v $(pwd)/docker/download:/root/Music jsavargas/zspotify
@@ -17,19 +17,17 @@ Spotify song downloader without injecting into the windows client
 
 
 
+## Requirements:
+
 ```
-Requirements:
-
 Binaries
-
     - Python 3.8 or greater
     - ffmpeg*
 
 Python packages:
-
     - pip install -r requirements.txt
-
 ```
+
 \*ffmpeg can be installed via apt for Debian-based distros or by downloading the binaries from [ffmpeg.org](https://ffmpeg.org) and placing them in your %PATH% in Windows.
 
 
