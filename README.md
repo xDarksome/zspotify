@@ -1,4 +1,22 @@
 # zspotify
+
+[![](https://badgen.net/badge/icon/github?icon=github&label)](https://github.com/jsavargas/zspotify)
+[![](https://badgen.net/badge/icon/docker?icon=docker&label)](https://hub.docker.com/r/jsavargas/zspotify)
+[![Docker Pulls](https://badgen.net/docker/pulls/jsavargas/zspotify?icon=docker&label=pulls)](https://hub.docker.com/r/jsavargas/zspotify/)
+[![Docker Stars](https://badgen.net/docker/stars/jsavargas/zspotify?icon=docker&label=stars)](https://hub.docker.com/r/jsavargas/zspotify/)
+[![Docker Image Size](https://badgen.net/docker/size/jsavargas/zspotify?icon=docker&label=image%20size)](https://hub.docker.com/r/jsavargas/zspotify/)
+![Github stars](https://badgen.net/github/stars/jsavargas/zspotify?icon=github&label=stars)
+![Github forks](https://badgen.net/github/forks/jsavargas/zspotify?icon=github&label=forks)
+![Github last-commit](https://img.shields.io/github/last-commit/jsavargas/zspotify)
+![Github last-commit](https://badgen.net/github/license/jsavargas/zspotify)
+
+
+
+## Find us at:
+
+* [GitHub](https://github.com/jsavargas/zspotify) - GitHub of this repository.
+* [DockerHub](https://hub.docker.com/r/jsavargas/zspotify) - DockerHub of this repository.
+
 Fork of https://github.com/Footsiefat/zspotify
 
 Spotify song downloader without injecting into the windows client
