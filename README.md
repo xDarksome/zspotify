@@ -8,7 +8,7 @@
 ![Github stars](https://badgen.net/github/stars/jsavargas/zspotify?icon=github&label=stars)
 ![Github forks](https://badgen.net/github/forks/jsavargas/zspotify?icon=github&label=forks)
 ![Github last-commit](https://img.shields.io/github/last-commit/jsavargas/zspotify)
-![Github last-commit](https://badgen.net/github/license/jsavargas/zspotify)
+![Github license](https://badgen.net/github/license/jsavargas/zspotify)
 
 
 
