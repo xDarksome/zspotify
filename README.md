@@ -3,6 +3,9 @@ Fork of https://github.com/Footsiefat/zspotify
 
 Spotify song downloader without injecting into the windows client
 
+![](images/image01.png)
+
+![](images/image02.png)
 
 ## **Docker:**
 
