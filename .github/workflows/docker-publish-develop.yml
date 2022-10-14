@@ -57,7 +57,7 @@ jobs:
         name: Get version zspotify.py
         id: version
         run: |
-          echo ::set-output name=version::$(cat zspotify.py | grep "VERSION =" | egrep -o "[0-9.]{1,}")
+          echo ::set-output name=version::$(cat zspotify.py | grep "__version__" | egrep -o "[0-9.]{1,}")
       
       - 
         name: Test output
