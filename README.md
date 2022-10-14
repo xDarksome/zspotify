@@ -75,6 +75,9 @@ Special hardcoded options:
 
 ## **Changelog:**
 
+**v1.9.4 (14 Oct 2022)**
+- add cover 640x640
+
 **v1.9.3 (30 Sep 2022)**
 - add KeyboardInterrupt control - Control + C
 
