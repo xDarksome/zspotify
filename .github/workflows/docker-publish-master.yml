@@ -52,7 +52,17 @@ jobs:
           echo "outputs version : ${{ steps.tag.outputs.version }}"
           echo "outputs SOURCE_TAG : ${{ steps.tag.outputs.SOURCE_TAG }}"
           echo "outputs RELEASE_VERSION : $RELEASE_VERSION"
-          
+
+      -
+        name: Get version zspotify.py
+        id: version
+        run: |
+          echo ::set-output name=version::$(cat zspotify.py | grep "__version__" | egrep -o "[0-9.]{1,}")
+
+      - 
+        name: Test output
+        run: echo ${{ steps.version.outputs.version }}
+
       -
         name: Login to DockerHub
         if: github.event_name != 'pull_request'
@@ -71,6 +81,7 @@ jobs:
           tags: |
             jsavargas/zspotify:latest
             jsavargas/zspotify:${{ steps.vars.outputs.tag }}
+            jsavargas/zspotify:${{ steps.version.outputs.version }}
       -
         name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
