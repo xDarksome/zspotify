@@ -18,7 +18,6 @@ import shutil
 from getpass import getpass
 import datetime
 
-import music_tag
 import requests
 from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
 from librespot.core import Session
@@ -26,6 +25,15 @@ from librespot.metadata import TrackId, EpisodeId
 from pydub import AudioSegment
 from tqdm import tqdm
 from appdirs import user_config_dir
+
+# Change to True to use mutagen directly rather than through music_tag layer.
+USE_MUTAGEN = True 
+
+if USE_MUTAGEN:
+    from mutagen.id3 import ID3, TPE1, TIT2, TRCK, TALB, APIC, TPE2, TDRC, TDOR, TPOS, COMM, TCON
+else:
+    import music_tag
+
 
 SESSION: Session = None
 sanitize = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
@@ -577,6 +585,36 @@ def set_audio_tags(filename, artists, name, album_name, release_year, disc_numbe
     tags.save()
 
 
+def set_audio_tags_mutagen(filename, artists, name, album_name, release_year, disc_number, track_number, track_id_str, image_url):
+    """ sets music_tag metadata using mutagen """
+    albumart = requests.get(image_url).content
+    artist = conv_artist_format(artists)
+    check_various_artists = "Various Artists" in filename
+    if check_various_artists:
+        album_artist = "Various Artists"
+    else:
+        album_artist = artist
+
+    tags = ID3(filename)
+    tags['TPE1'] = TPE1(encoding=3, text=artist)             # TPE1 Lead Artist/Performer/Soloist/Group
+    tags['TIT2'] = TIT2(encoding=3, text=name)               # TIT2 Title/songname/content description
+    tags['TALB'] = TALB(encoding=3, text=album_name)         # TALB Album/Movie/Show title
+    tags['TDRC'] = TDRC(encoding=3, text=release_year)       # TDRC Recording time
+    tags['TDOR'] = TDOR(encoding=3, text=release_year)       # TDOR Original release time
+    tags['TPOS'] = TPOS(encoding=3, text=str(disc_number))   # TPOS Part of a set
+    tags['TRCK'] = TRCK(encoding=3, text=str(track_number))  # TRCK Track number/Position in set
+    tags['COMM'] = COMM(encoding=3, lang=u'eng', text=u'id[spotify.com:track:'+track_id_str+']') #COMM User comment
+    tags['TPE2'] = TPE2(encoding=3, text=album_artist)       # TPE2 Band/orchestra/accompaniment
+    tags['APIC'] = APIC(                                     # APIC Attached (or linked) Picture.
+                        encoding=3,
+                        mime='image/jpeg',
+                        type=3,
+                        desc=u'0',
+                        data=requests.get(image_url).content)
+   #tags['TCON'] = TCON(encoding=3, text=genre)              # TCON Genre - TODO
+    tags.save()
+
+
 def set_music_thumbnail(filename, image_url):
     """ Downloads cover artwork """
     #print("###   SETTING THUMBNAIL   ###")
@@ -819,9 +857,13 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
 
                     if not RAW_AUDIO_AS_IS:
                         convert_audio_format(filename)
-                        set_audio_tags(filename, artists, name, album_name,
-                                       release_year, disc_number, track_number, track_id_str)
-                        set_music_thumbnail(filename, image_url)
+                        if USE_MUTAGEN:
+                            set_audio_tags_mutagen(filename, artists, name, album_name,
+                                           release_year, disc_number, track_number, track_id_str, image_url)
+                        else:
+                            set_audio_tags(filename, artists, name, album_name,
+                                           release_year, disc_number, track_number, track_id_str)
+                            set_music_thumbnail(filename, image_url)
 
                     if not OVERRIDE_AUTO_WAIT:
                         time.sleep(ANTI_BAN_WAIT_TIME)
