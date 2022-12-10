@@ -773,11 +773,22 @@ def add_to_archive(song_id: str, filename: str, author_name: str, song_name: str
         with open(archive_path, 'w', encoding='utf-8') as file:
             file.write(f'{song_id}\t{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\t{author_name}\t{song_name}\t{filename}\n')
 
+def ensure_filename_under_255(filename) -> str:
+    """
+    filename is either string or Path
+    """
+    p = Path(filename)
+    if len(p.name) > 250:
+        p.name = p.name[:250]
+    
+    return str(p)
+    
 
 # Functions directly related to downloading stuff
 def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value='', disable_progressbar=False):
     """ Downloads raw song audio from Spotify """
     global ROOT_PATH, SKIP_EXISTING_FILES, SKIP_PREVIOUSLY_DOWNLOADED, MUSIC_FORMAT, RAW_AUDIO_AS_IS, ANTI_BAN_WAIT_TIME, OVERRIDE_AUTO_WAIT, ALBUM_IN_FILENAME
+    filename = None
     try:
     	# TODO: ADD disc_number IF > 1 
         artists, album_name, name, image_url, release_year, disc_number, track_number, scraped_song_id, is_playable = get_song_info(
@@ -806,7 +817,9 @@ def download_track(track_id_str: str, extra_paths="", prefix=False, prefix_value
         download_track(track_id_str, extra_paths,prefix=prefix, prefix_value=prefix_value, disable_progressbar=disable_progressbar)
 
     else:
-
+        if not filename:
+            raise Exception("Filename could not be created")
+        filename = ensure_filename_under_255(filename)
         try:
             if not is_playable:
                 print("###   SKIPPING:", song_name, "(SONG IS UNAVAILABLE)   ###")
