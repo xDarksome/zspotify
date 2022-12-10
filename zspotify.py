@@ -10,6 +10,7 @@ __version__ = "1.9.4"
 import json
 import os
 import os.path
+from pathlib import Path
 import platform
 import re
 import sys
@@ -114,6 +115,8 @@ def login():
     """ Authenticates with Spotify and saves credentials to a file """
     global SESSION
 
+    Path(CREDENTIALS).parent.mkdir(parents=True, exist_ok=True)
+    
     if os.path.isfile(CREDENTIALS):
         shutil.copyfile(CREDENTIALS, 'credentials.json')
 
