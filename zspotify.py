@@ -780,7 +780,7 @@ def ensure_filename_under_255(filename) -> str:
     """
     p = Path(filename)
     if len(p.name) > 250:
-        p.name = p.name[:250]
+        p = p.with_name(p.name[:250])
     
     return str(p)
     
