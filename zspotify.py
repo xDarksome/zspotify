@@ -10,6 +10,7 @@ __version__ = "1.9.4"
 import json
 import os
 import os.path
+from pathlib import Path
 import platform
 import re
 import sys
