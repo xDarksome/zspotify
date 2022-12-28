@@ -139,6 +139,8 @@ def login():
     """Authenticates with Spotify and saves credentials to a file"""
     global SESSION
 
+    Path(CREDENTIALS).parent.mkdir(parents=True, exist_ok=True)
+    
     if os.path.isfile(CREDENTIALS):
         shutil.copyfile(CREDENTIALS, "credentials.json")
 
