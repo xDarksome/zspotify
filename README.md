@@ -75,6 +75,9 @@ Special hardcoded options:
 
 ## **Changelog:**
 
+**v1.9.6 (29 Dic 2022)**
+- Sum the size of the images, compares and saves the index of the largest image size
+
 **v1.9.4 (14 Oct 2022)**
 - add cover 640x640
 
