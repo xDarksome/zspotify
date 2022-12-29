@@ -5,7 +5,7 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
-__version__ = "1.9.4"
+__version__ = "1.9.5"
 
 import json
 import os
@@ -99,6 +99,13 @@ def wait(seconds: int = 3):
         time.sleep(1)
 
 
+def antiban_wait():
+    """ Pause between albums for a set number of seconds """
+    for i in range(ANTI_BAN_WAIT_TIME_ALBUMS)[::-1]:
+        print("\rWait for Next Download in %d second(s)..." % (i + 1), end="")
+        time.sleep(1)
+
+
 def sanitize_data(value):
     """Returns given string with problematic removed"""
     global sanitize
@@ -155,6 +162,7 @@ def login():
         password = getpass()
         try:
             SESSION = Session.Builder().user_pass(user_name, password).create()
+            os.makedirs(CONFIG_DIR, exist_ok=True)
             shutil.copyfile("credentials.json", CREDENTIALS)
             return
         except RuntimeError:
@@ -458,7 +466,16 @@ def download_episode(episode_id_str):
         # convert_audio_format(ROOT_PODCAST_PATH +
         #                     extra_paths + filename + ".wav")
 
-        # related functions that do stuff with the spotify API
+            convert_audio_format(filename)
+            if not RAW_AUDIO_AS_IS:
+                if USE_MUTAGEN:
+                    set_audio_tags_mutagen(filename, "", episode_name, podcast_name, release_date, "", "", scraped_episode_id, image_url)
+                else:
+                    set_audio_tags(filename, "", episode_name, podcast_name, release_date, 0, 0, scraped_episode_id)
+                    set_music_thumbnail(filename, image_url)
+
+            add_to_archive(episode_id_str, filename, podcast_name, episode_name)
+            IS_PODCAST = False
 
 
 def search(search_term):
@@ -471,11 +488,11 @@ def search(search_term):
             "limit": LIMIT,
             "offset": "0",
             "q": search_term,
-            "type": "track,album,playlist,artist",
+            "type": "track,album,playlist,artist"
         },
         headers={"Authorization": "Bearer %s" % token},
     )
-    # print("token: ",token)
+    #print("token: ",token)
 
     i = 1
     tracks = resp.json()["tracks"]["items"]
@@ -523,7 +540,7 @@ def search(search_term):
     total_artists = 0
     print("###  ARTIST  ###")
     for artist in artists:
-        # print("==> ",artist)
+        #print("==> ",artist)
         print(f"{i}, {artist['name']} | {'/'.join(artist['genres'])}")
         i += 1
     total_artists = i - total_albums - total_tracks - total_playlists - 1
@@ -535,20 +552,19 @@ def search(search_term):
 
         selection = str(input("SELECT ITEM(S) BY ID: "))
         inputs = split_input(selection)
-
-        if not selection:
-            client()
-
+        
+        if not selection: client()
+        
         for pos in inputs:
             position = int(pos)
             if position <= total_tracks:
                 track_id = tracks[position - 1]["id"]
                 download_track(track_id)
             elif position <= total_albums + total_tracks:
-                # print("==>" , position , " total_albums + total_tracks ", total_albums + total_tracks )
+                #print("==>" , position , " total_albums + total_tracks ", total_albums + total_tracks )
                 download_album(albums[position - total_tracks - 1]["id"])
             elif position <= total_albums + total_tracks + total_playlists:
-                # print("==> position: ", position ," total_albums + total_tracks + total_playlists ", total_albums + total_tracks + total_playlists )
+                #print("==> position: ", position ," total_albums + total_tracks + total_playlists ", total_albums + total_tracks + total_playlists )
                 playlist_choice = playlists[position - total_tracks - total_albums - 1]
                 playlist_songs = get_playlist_songs(token, playlist_choice["id"])
                 for song in playlist_songs:
@@ -559,8 +575,8 @@ def search(search_term):
                         )
                         print("\n")
             else:
-                # 5eyTLELpc4Coe8oRTHkU3F
-                # print("==> position: ", position ," total_albums + total_tracks + total_playlists: ", position - total_albums - total_tracks - total_playlists )
+                #5eyTLELpc4Coe8oRTHkU3F
+                #print("==> position: ", position ," total_albums + total_tracks + total_playlists: ", position - total_albums - total_tracks - total_playlists )
                 artists_choice = artists[
                     position - total_albums - total_tracks - total_playlists - 1
                 ]
@@ -588,7 +604,7 @@ def search(search_term):
                 total_albums_downloads = i
                 print("\n")
 
-                # print('\n'.join([f"{album['name']} - [{album['album_type']}] | {'/'.join([artist['name'] for artist in album['artists']])} " for album in sorted(albums, key=lambda k: k['album_type'], reverse=True)]))
+                #print('\n'.join([f"{album['name']} - [{album['album_type']}] | {'/'.join([artist['name'] for artist in album['artists']])} " for album in sorted(albums, key=lambda k: k['album_type'], reverse=True)]))
 
                 for i in range(8)[::-1]:
                     print("\rWait for Download in %d second(s)..." % (i + 1), end="")
@@ -602,17 +618,22 @@ def search(search_term):
                         and album["album_type"] != "single"
                     ):
                         i += 1
-                        year = re.search("(\d{4})", album["release_date"]).group(1)
-                        print(
-                            f"\n\n\n{i}/{total_albums_downloads} {album['artists'][0]['name']} - ({year}) {album['name']} [{album['total_tracks']}]"
-                        )
-                        download_album(album["id"])
-                        for i in range(ANTI_BAN_WAIT_TIME_ALBUMS)[::-1]:
-                            print(
-                                "\rWait for Next Download in %d second(s)..." % (i + 1),
-                                end="",
-                            )
-                            time.sleep(1)
+                        year = re.search('(\d{4})', album['release_date']).group(1)
+                        print(f"\n\n\n{i}/{total_albums_downloads} {album['artists'][0]['name']} - ({year}) {album['name']} [{album['total_tracks']}]")
+                        download_album(album['id'])
+                        antiban_wait()
+
+
+def get_artist_info(artist_id):
+    """ Retrieves metadata for downloaded songs """
+    token = SESSION.tokens().get("user-read-email")
+    try:
+        info = json.loads(requests.get("https://api.spotify.com/v1/artists/" + artist_id, headers={"Authorization": "Bearer %s" % token}).text)
+        return info
+    except Exception as e:
+        print("###   get_artist_info - FAILED TO QUERY METADATA   ###")
+        print(e)
+        print(artist_id,info)
 
 
 def get_song_info(song_id):
@@ -629,6 +650,14 @@ def get_song_info(song_id):
             ).text
         )
 
+        #Sum the size of the images, compares and saves the index of the largest image size
+        sum_total = []
+        for sum_px in info['tracks'][0]['album']['images']:
+            sum_total.append(sum_px['height'] + sum_px['width'])
+
+        img_index = sum_total.index(max(sum_total))
+        
+        artist_id = info['tracks'][0]['artists'][0]['id']
         artists = []
         for data in info["tracks"][0]["artists"]:
             artists.append(sanitize_data(data["name"]))
@@ -655,8 +684,7 @@ def get_song_info(song_id):
     except Exception as e:
         print("###   get_song_info - FAILED TO QUERY METADATA   ###")
         print(e)
-        print(song_id, info)
-
+        print(song_id,info)
 
 def check_premium():
     """If user has spotify premium return true"""
@@ -755,7 +783,7 @@ def set_audio_tags_mutagen(
 
 def set_music_thumbnail(filename, image_url):
     """Downloads cover artwork"""
-    # print("###   SETTING THUMBNAIL   ###")
+    #print("###   SETTING THUMBNAIL   ###")
     img = requests.get(image_url).content
     tags = music_tag.load_file(filename)
     tags["artwork"] = img
@@ -1005,13 +1033,9 @@ def download_track(
 
     except Exception as e:
         print("###   SKIPPING SONG - FAILED TO QUERY METADATA   ###")
-        print(
-            f" download_track FAILED: [{track_id_str}][{extra_paths}][{prefix}][{prefix_value}][{disable_progressbar}]"
-        )
-        print("SKIPPING SONG: ", e)
-        print(
-            f" download_track FAILED: [{artists}][{album_name}][{name}][{image_url}][{release_year}][{disc_number}][{track_number}][{scraped_song_id}][{is_playable}]"
-        )
+        print(f" download_track FAILED: [{track_id_str}][{extra_paths}][{prefix}][{prefix_value}][{disable_progressbar}]")
+        print("SKIPPING SONG: ",e)
+        print(f" download_track FAILED: [{artists}][{album_name}][{name}][{image_url}][{release_year}][{disc_number}][{track_number}][{scraped_song_id}][{is_playable}]")
         time.sleep(60)
         download_track(
             track_id_str,
@@ -1074,7 +1098,7 @@ def download_track(
 
                             downloaded += len(data)
                             bar.update(file.write(data))
-                            # print(f"[{total_size}][{_CHUNK_SIZE}] [{len(data)}] [{total_size - downloaded}] [{downloaded}]")
+                            #print(f"[{total_size}][{_CHUNK_SIZE}] [{len(data)}] [{total_size - downloaded}] [{downloaded}]")
                             if (total_size - downloaded) < _CHUNK_SIZE:
                                 _CHUNK_SIZE = total_size - downloaded
                             if len(data) == 0:
@@ -1120,9 +1144,7 @@ def download_track(
             exit()
             if os.path.exists(filename):
                 os.remove(filename)
-            print(
-                f" download_track GENERAL DOWNLOAD ERROR: [{track_id_str}][{extra_paths}][{prefix}][{prefix_value}][{disable_progressbar}]"
-            )
+            print(f" download_track GENERAL DOWNLOAD ERROR: [{track_id_str}][{extra_paths}][{prefix}][{prefix_value}][{disable_progressbar}]")
             download_track(
                 track_id_str,
                 extra_paths,
@@ -1242,9 +1264,7 @@ def download_from_user_playlist():
 
     print("\n> SELECT A PLAYLIST BY ID")
     print("> SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID's")
-    print(
-        "> For example, typing 10 to get one playlist or 10-20 to get\nevery playlist from 10-20 (inclusive)\n"
-    )
+    print("> For example, typing 10 to get one playlist or 10-20 to get\nevery playlist from 10-20 (inclusive)\n")
 
     playlist_choices = input("ID(s): ").split("-")
 
