@@ -5,7 +5,7 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
-__version__ = "1.9.5"
+__version__ = "1.9.6"
 
 import json
 import os
@@ -656,14 +656,16 @@ def get_song_info(song_id):
             sum_total.append(sum_px['height'] + sum_px['width'])
 
         img_index = sum_total.index(max(sum_total))
-        
+
+        print(f" >>>>>>> image_url [{img_index}] ")
+
         artist_id = info['tracks'][0]['artists'][0]['id']
         artists = []
         for data in info["tracks"][0]["artists"]:
             artists.append(sanitize_data(data["name"]))
         album_name = sanitize_data(info["tracks"][0]["album"]["name"])
         name = sanitize_data(info["tracks"][0]["name"])
-        image_url = info["tracks"][0]["album"]["images"][2]["url"]
+        image_url = info["tracks"][0]["album"]["images"][img_index]["url"]
         release_year = info["tracks"][0]["album"]["release_date"].split("-")[0]
         disc_number = info["tracks"][0]["disc_number"]
         track_number = info["tracks"][0]["track_number"]
