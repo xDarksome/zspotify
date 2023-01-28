@@ -1256,7 +1256,7 @@ def download_from_user_playlist():
     """Select which playlist(s) to download"""
     token = SESSION.tokens().get("user-read-email")
     playlists = get_all_playlists(token)
-
+    playlists.sort(key=lambda x: x["name"], reverse=False)
     count = 1
     for playlist in playlists:
         print(str(count) + ": " + playlist["name"].strip())
