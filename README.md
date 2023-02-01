@@ -75,7 +75,7 @@ Special hardcoded options:
 
 ## **Changelog:**
 
-**v1.9.8 (01 Jan 2023)**
+**v1.9.8 (01 Feb 2023)**
 - Fix album without image / jlsalvador/fix-album-without-image
 - Add egg name for librespot-python dependency (Fix) / scarlettekk/librespot-egg
 
