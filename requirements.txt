@@ -1,4 +1,4 @@
-git+https://github.com/kokarare1212/librespot-python
+git+https://github.com/kokarare1212/librespot-python#egg=librespot
 mutagen
 music_tag
 pydub
