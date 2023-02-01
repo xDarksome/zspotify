@@ -75,6 +75,10 @@ Special hardcoded options:
 
 ## **Changelog:**
 
+**v1.9.8 (01 Jan 2023)**
+- Fix album without image / jlsalvador/fix-album-without-image
+- Add egg name for librespot-python dependency (Fix) / scarlettekk/librespot-egg
+
 **v1.9.7 (29 Dic 2022)**
 - Sum the size of the images, compares and saves the index of the largest image size
 
