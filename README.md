@@ -67,6 +67,8 @@ Special hardcoded options:
   RAW_AUDIO_AS_IS     Set this to True to only stream the audio to a file and do no re-encoding or post processing
   
   FORCE_PREMIUM       Set this to True if ZSpotify isn't automatically detecting that you are using a premium account
+
+  LIMIT_ELEMENTS      Set limit of elements brought in the list, by default 50 elements in each category
   
 ```
 

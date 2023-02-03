@@ -5,7 +5,7 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
-__version__ = "1.9.9"
+__version__ = "1.9.10"
 
 import json
 import os
@@ -76,7 +76,7 @@ CHUNK_SIZE = 50000
 
 CREDENTIALS = os.path.join(CONFIG_DIR, "credentials.json")
 
-LIMIT = 50
+LIMIT = os.getenv("LIMIT_ELEMENTS") or 50
 
 requests.adapters.DEFAULT_RETRIES = 10
 REINTENT_DOWNLOAD = 30

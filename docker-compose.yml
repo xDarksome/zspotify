@@ -11,6 +11,7 @@ services:
       - 'PUID=99'
       - 'PGID=100'
       - 'TZ=America/Santiago'
+      - LIMIT_ELEMENTS=50       #Optional
     volumes:
       - /mnt/user/appdata/zspotify:/root/.config/ZSpotify
       - /mnt/user/download/torrent:/root/Music/
