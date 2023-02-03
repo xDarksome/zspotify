@@ -5,7 +5,7 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
-__version__ = "1.9.10"
+__version__ = "1.9.11"
 
 import json
 import os
@@ -230,7 +230,14 @@ def client():
             elif show_id_str is not None:
                 for episode in get_show_episodes(token, show_id_str):
                     download_episode(episode)
-
+            else:
+                try:
+                    search(sys.argv[1])
+                    del sys.argv[1]
+                except:
+                    client()
+                print("")
+                exit()
     else:
         search_text = input("Enter search or URL: ")
 
