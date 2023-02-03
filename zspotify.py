@@ -5,7 +5,7 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
-__version__ = "1.9.7"
+__version__ = "1.9.8"
 
 import json
 import os
@@ -472,7 +472,8 @@ def download_episode(episode_id_str):
                     set_audio_tags_mutagen(filename, "", episode_name, podcast_name, release_date, "", "", scraped_episode_id, image_url)
                 else:
                     set_audio_tags(filename, "", episode_name, podcast_name, release_date, 0, 0, scraped_episode_id)
-                    set_music_thumbnail(filename, image_url)
+                    if image_url:
+                        set_music_thumbnail(filename, image_url)
 
             add_to_archive(episode_id_str, filename, podcast_name, episode_name)
             IS_PODCAST = False
@@ -655,7 +656,7 @@ def get_song_info(song_id):
         for sum_px in info['tracks'][0]['album']['images']:
             sum_total.append(sum_px['height'] + sum_px['width'])
 
-        img_index = sum_total.index(max(sum_total))
+        img_index = sum_total.index(max(sum_total)) if sum_total else -1
 
         artist_id = info['tracks'][0]['artists'][0]['id']
         artists = []
@@ -663,7 +664,7 @@ def get_song_info(song_id):
             artists.append(sanitize_data(data["name"]))
         album_name = sanitize_data(info["tracks"][0]["album"]["name"])
         name = sanitize_data(info["tracks"][0]["name"])
-        image_url = info["tracks"][0]["album"]["images"][img_index]["url"]
+        image_url = info["tracks"][0]["album"]["images"][img_index]["url"] if img_index >= 0 else None
         release_year = info["tracks"][0]["album"]["release_date"].split("-")[0]
         disc_number = info["tracks"][0]["disc_number"]
         track_number = info["tracks"][0]["track_number"]
@@ -742,7 +743,7 @@ def set_audio_tags_mutagen(
     image_url,
 ):
     """sets music_tag metadata using mutagen"""
-    albumart = requests.get(image_url).content
+    albumart = requests.get(image_url).content if image_url else None
     artist = conv_artist_format(artists)
     check_various_artists = "Various Artists" in filename
     if check_various_artists:
@@ -770,13 +771,14 @@ def set_audio_tags_mutagen(
     tags["TPE2"] = TPE2(
         encoding=3, text=album_artist
     )  # TPE2 Band/orchestra/accompaniment
-    tags["APIC"] = APIC(  # APIC Attached (or linked) Picture.
-        encoding=3,
-        mime="image/jpeg",
-        type=3,
-        desc="0",
-        data=requests.get(image_url).content,
-    )
+    if albumart:
+        tags["APIC"] = APIC(  # APIC Attached (or linked) Picture.
+            encoding=3,
+            mime="image/jpeg",
+            type=3,
+            desc="0",
+            data=albumart,
+        )
     # tags['TCON'] = TCON(encoding=3, text=genre)              # TCON Genre - TODO
     tags.save()
 
@@ -1131,7 +1133,8 @@ def download_track(
                                 track_number,
                                 track_id_str,
                             )
-                            set_music_thumbnail(filename, image_url)
+                            if image_url:
+                                set_music_thumbnail(filename, image_url)
 
                     if not OVERRIDE_AUTO_WAIT:
                         time.sleep(ANTI_BAN_WAIT_TIME)
