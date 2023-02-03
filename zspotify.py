@@ -187,8 +187,6 @@ def client():
     if len(sys.argv) > 1:
         if sys.argv[1] == "-p" or sys.argv[1] == "--playlist":
             download_from_user_playlist()
-        if sys.argv[1] == "-ps" or sys.argv[1] == "--playlist-sort":
-            download_from_user_playlist(sort=True)
         elif sys.argv[1] == "-pid" or sys.argv[1] == "--playlist_id":
             if len(sys.argv) > 3:
                 download_playlist_by_id(sys.argv[2], sys.argv[3])
@@ -1257,11 +1255,11 @@ def download_playlist_by_id(playlist_id, playlist_name):
         print("\n")
 
 
-def download_from_user_playlist(sort=False):
+def download_from_user_playlist():
     """Select which playlist(s) to download"""
     token = SESSION.tokens().get("user-read-email")
     playlists = get_all_playlists(token)
-    if sort: playlists.sort(key=lambda x: x["name"], reverse=False)
+    playlists.sort(key=lambda x: x["name"], reverse=False)
     count = 1
     for playlist in playlists:
         print(str(count) + ": " + playlist["name"].strip())
