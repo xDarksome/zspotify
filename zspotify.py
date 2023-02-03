@@ -5,7 +5,7 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
-__version__ = "1.9.8"
+__version__ = "1.9.9"
 
 import json
 import os

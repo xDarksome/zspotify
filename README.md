@@ -55,7 +55,6 @@ Command line usage:
 
 Extra command line options:
   -p, --playlist          Downloads a saved playlist from your account
-  -ps, --playlist-sort    Download a saved playlist from your account sorted by name
   -ls, --liked-songs      Downloads all the liked songs from your account
   -pid, --playlist-id [id] [folder_name]  Downloads a playlist from their id and saves in folder_name. This playlist can be created by other user, not only your playlists. 
 
