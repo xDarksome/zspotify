@@ -75,9 +75,12 @@ Special hardcoded options:
 
 ## **Changelog:**
 
+**v1.9.9 (03 Feb 2023)**
+- Sort playlists by name / MauritzFunke
+
 **v1.9.8 (01 Feb 2023)**
 - Fix album without image / jlsalvador/fix-album-without-image
-- Add egg name for librespot-python dependency (Fix) / scarlettekk/librespot-egg
+- Add egg name for librespot-python dependency (Fix) / scarlettekk
 
 **v1.9.7 (29 Dic 2022)**
 - Sum the size of the images, compares and saves the index of the largest image size
