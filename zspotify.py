@@ -5,7 +5,7 @@ ZSpotify
 It's like youtube-dl, but for Spotify.
 """
 
-__version__ = "1.9.11"
+__version__ = "1.9.12"
 
 import json
 import os
@@ -82,7 +82,8 @@ requests.adapters.DEFAULT_RETRIES = 10
 REINTENT_DOWNLOAD = 30
 
 # miscellaneous functions for general use
-
+PUID = int(os.getenv("PUID")) or 0
+PGID = int(os.getenv("PGID")) or 0
 
 def clear():
     """Clear the console window"""
@@ -233,9 +234,8 @@ def client():
             else:
                 try:
                     search(sys.argv[1])
-                    del sys.argv[1]
                 except:
-                    client()
+                    pass
                 print("")
                 exit()
     else:
@@ -1089,7 +1089,12 @@ def download_track(
 
                     # if not os.path.isdir(ROOT_PATH + extra_paths):
                     os.makedirs(ROOT_PATH + extra_paths, exist_ok=True)
-
+                    
+                    try:
+                        os.chown(ROOT_PATH + extra_paths, PUID, PGID)
+                    except Exception as chown:
+                        pass
+                    
                     total_size = stream.input_stream.size
                     downloaded = 0
                     _CHUNK_SIZE = CHUNK_SIZE
