@@ -1277,24 +1277,39 @@ def download_from_user_playlist():
         print(str(count) + ": " + playlist["name"].strip())
         count += 1
 
-    print("\n> SELECT A PLAYLIST BY ID")
-    print("> SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID's")
-    print("> For example, typing 10 to get one playlist or 10-20 to get\nevery playlist from 10-20 (inclusive)\n")
+    print('''
+        > SELECT A PLAYLIST BY ID
+        > SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID's
+          For example, typing 10 to get one playlist or 10-20 to get
+          every playlist from 10-20 (inclusive)
+        > SELECT A MULTIPLE PLAYLISTS BY ADDING A COMMA BETWEEN IDs
+          For example, typing 10,11,20 will select playlists
+          10, 11 and 20 respectively
+    ''')
+    playlist_input = input("ID(s): ")
 
-    playlist_choices = input("ID(s): ").split("-")
-
-    if len(playlist_choices) == 1:
-        download_playlist(playlists, playlist_choices[0])
-    else:
+    if "-" in playlist_input:
+        playlist_choices = playlist_input.split("-")
         start = int(playlist_choices[0])
         end = int(playlist_choices[1]) + 1
 
         print(f"Downloading from {start} to {end}...")
 
-        for playlist in range(start, end):
-            download_playlist(playlists, playlist)
+        for playlist_no in range(start, end):
+            download_playlist(playlists, playlist_no)
 
         print("\n**All playlists have been downloaded**\n")
+    elif "," in playlist_input:
+        playlist_choices = list(map(int, playlist_input.split(",")))
+
+        print(f"Downloading playlists {playlist_input}...")
+
+        for playlist_no in playlist_choices:
+            download_playlist(playlists, playlist_no)
+
+        print("\n**All playlists have been downloaded**\n")
+    else:
+        download_playlist(playlists, int(playlist_input))
 
 
 # Core functions here
