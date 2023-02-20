@@ -82,8 +82,8 @@ requests.adapters.DEFAULT_RETRIES = 10
 REINTENT_DOWNLOAD = 30
 
 # miscellaneous functions for general use
-PUID = int(os.getenv("PUID")) or 0
-PGID = int(os.getenv("PGID")) or 0
+PUID = int(os.getenv("PUID") or 0)
+PGID = int(os.getenv("PGID") or 0)
 
 def clear():
     """Clear the console window"""
