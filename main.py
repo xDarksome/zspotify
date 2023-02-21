@@ -549,9 +549,6 @@ class zspotify:
                     self.download_by_url(show)
                 else:
                     self.download_all_show_episodes(show)
-        if self.args.url:
-            for url in self.split_input(self.args.url):
-                self.download_by_url(url)
         if self.args.search:
             for query in self.split_input(self.args.search):
                 self.search(query)
