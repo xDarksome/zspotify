@@ -279,7 +279,7 @@ class zspotify:
         basepath = os.path.join(self.music_dir, self.sanitize_data(playlist['name']))
         for song in songs:
             self.download_track(song['id'], basepath, "playlist")
-        print(f"Finished downloading {playlist['playlist_name']} playlist")
+        print(f"Finished downloading {playlist['name']} playlist")
 
 
     def download_all_user_playlists(self):
@@ -409,7 +409,7 @@ class zspotify:
                             artists=episode['show_name'],
                             name=episode['audio_name'],
                             release_year=episode['release_year'],
-                            track_id_str=episode['scraped_episode_id'],
+                            track_id_str=episode_id,
                             image_url=episode['image_url'])
         print(f"Finished downloading {episode['audio_name']} episode")
 
