@@ -510,49 +510,49 @@ class zspotify:
             return
         if self.args.all_playlists:
                 self.download_all_user_playlists()
-        elif self.args.liked_songs:
+        if self.args.liked_songs:
             self.download_liked_songs()
-        elif self.args.playlist:
+        if self.args.playlist:
             for playlist in self.split_input(self.args.playlist):
                 if "spotify.com" in self.args.playlist:
                     self.download_by_url(playlist)
                 else:
                     self.download_playlist(playlist)
-        elif self.args.album:
+        if self.args.album:
             for album in self.split_input(self.args.album):
                 if "spotify.com" in self.args.album:
                     self.download_by_url(album)
                 else:
                     self.download_album(album)
-        elif self.args.artist:
+        if self.args.artist:
             for artist in self.split_input(self.args.artist):
                 if "spotify.com" in self.args.artist:
                     self.download_by_url(artist)
                 else:
                     self.download_artist(artist)
-        elif self.args.track:
+        if self.args.track:
             for track in self.split_input(self.args.track):
                 if "spotify.com" in self.args.track:
                     self.download_by_url(track)
                 else:
                     self.download_track(track)
             print("All Done")
-        elif self.args.episode:
+        if self.args.episode:
             for episode in self.split_input(self.args.episode):
                 if "spotify.com" in self.args.episode:
                     self.download_by_url(episode)
                 else:
                     self.download_episode(episode)
-        elif self.args.full_show:
+        if self.args.full_show:
             for show in self.split_input(self.args.full_show):
                 if "spotify.com" in self.args.full_show:
                     self.download_by_url(show)
                 else:
                     self.download_all_show_episodes(show)
-        elif self.args.url:
+        if self.args.url:
             for url in self.split_input(self.args.url):
                 self.download_by_url(url)
-        elif self.args.search:
+        if self.args.search:
             for query in self.split_input(self.args.search):
                 self.search(query)
         else:
@@ -561,7 +561,6 @@ class zspotify:
                 self.search(self.args.search)
             else:
                 print("Invalid input")
-                return
 
 if __name__ == "__main__":
     try:
