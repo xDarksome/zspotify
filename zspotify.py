@@ -627,8 +627,3 @@ class zspotify_api:
             return None
         else:
             return {'tracks': ret_tracks, 'albums': ret_albums, 'playlists': ret_playlists, 'artists': ret_artists}
-
-
-
-
-
