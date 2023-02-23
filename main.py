@@ -89,6 +89,7 @@ class zspotify:
                             action="store_true", default=False)
         parser.add_argument("-cf", "--credentials-file", help="File to save the credentials",
                             default=os.path.join(user_config_dir("ZSpotify"), "credentials.json"))
+        parser.add_argument("-bd", "--bulk-download", help="Bulk download from file with urls" )
 
         return parser.parse_args()
 
@@ -565,6 +566,11 @@ class zspotify:
                     self.download_by_url(query)
                 else:
                     self.search(query)
+        if self.args.bulk_download:
+            with open(self.args.bulk_download, "r") as f:
+                for line in f:
+                    for url in self.split_input(line.strip()):
+                        self.download_by_url(url)
         elif len(sys.argv) <= 1:
             self.args.search = input("Search: ")
             if self.args.search:
