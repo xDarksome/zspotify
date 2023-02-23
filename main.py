@@ -250,6 +250,7 @@ class zspotify:
                 bar.update(self.zs_api.progress['downloaded'] - bar.n)
                 time.sleep(0.1)
                 if not self.zs_api.progress:
+                    bar.update(self.zs_api.progress['total'] - bar.n)
                     break
         print(f"Converting {filename}")
         downloader.join()
