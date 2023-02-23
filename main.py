@@ -36,7 +36,8 @@ class zspotify:
 
         self.download_dir = os.path.expanduser("~/Music/")
         if self.args.download_dir:
-            self.download_dir = self.args.download_dir
+            self.download_dir = os.path.expanduser(self.args.download_dir)
+
 
         self.music_dir = os.path.join(self.download_dir, "ZSpotify Music")
         self.episodes_dir = os.path.join(self.download_dir, "ZSpotify Podcasts")
@@ -239,6 +240,7 @@ class zspotify:
             fullpath = os.path.join(basepath, filename)
 
         if self.skip_existing and os.path.exists(fullpath):
+            test_p = os.path.abspath(fullpath)
             print(f"Skipping {filename} - Already downloaded")
             return True
 
