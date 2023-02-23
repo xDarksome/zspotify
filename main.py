@@ -43,9 +43,9 @@ class zspotify:
         self.episodes_dir = os.path.join(self.download_dir, "ZSpotify Podcasts")
 
         if self.args.music_dir:
-            self.music_dir = self.args.music_dir
+            self.music_dir = os.path.expanduser(self.args.music_dir)
         if self.args.episodes_dir:
-            self.episodes_dir = self.args.episodes_dir
+            self.episodes_dir = os.path.expanduser(self.args.episodes_dir)
 
         self.album_in_filename = self.args.album_in_filename
         self.antiban_album_time = self.args.antiban_album
@@ -240,7 +240,6 @@ class zspotify:
             fullpath = os.path.join(basepath, filename)
 
         if self.skip_existing and os.path.exists(fullpath):
-            test_p = os.path.abspath(fullpath)
             print(f"Skipping {filename} - Already downloaded")
             return True
 
@@ -256,11 +255,12 @@ class zspotify:
                 unit_divisor=1024,
         ) as bar:
             while self.zs_api.progress:
-                bar.update(self.zs_api.progress['downloaded'] - bar.n)
-                time.sleep(0.1)
-                if not self.zs_api.progress:
-                    bar.update(self.zs_api.progress['total'] - bar.n)
+                temp_progress = self.zs_api.progress
+                if not temp_progress:
+                    bar.update(temp_progress['total'] - bar.n)
                     break
+                bar.update(temp_progress['downloaded'] - bar.n)
+                time.sleep(0.1)
         print(f"Converting {filename}")
         downloader.join()
         print(f"Set audiotags {filename}")
