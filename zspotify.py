@@ -315,9 +315,9 @@ class zspotify_api:
             ).json()
             offset += limit
             for song in resp["items"]:
-                audios.append({"id": song["track"]["id"], "name": song["track"]["name"],
-                              "artist":song["track"]["artists"][0]["name"]})
-                #audios.append(song["track"]["id"])
+                if song["track"] is not None:
+                    audios.append({"id": song["track"]["id"], "name": song["track"]["name"],
+                                  "artist":song["track"]["artists"][0]["name"]})
 
             if len(resp["items"]) < limit:
                 break

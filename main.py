@@ -552,7 +552,7 @@ class zspotify:
         if self.args.search:
             for query in self.split_input(self.args.search):
                 self.search(query)
-        else:
+        elif len(sys.argv) <= 1:
             self.args.search = input("Search: ")
             if self.args.search:
                 self.search(self.args.search)
