@@ -33,9 +33,19 @@ class zspotify:
             anti_ban_wait_time=self.args.antiban_time,
             credentials=self.args.credentials_file)
         self.archive_file = os.path.join(self.args.config_dir, "archive.json")
-        self.download_dir = self.args.download_dir
-        self.music_dir = self.args.music_dir
-        self.episodes_dir = self.args.episodes_dir
+
+        self.download_dir = os.path.expanduser("~/Music/")
+        if self.args.download_dir:
+            self.download_dir = self.args.download_dir
+
+        self.music_dir = os.path.join(self.download_dir, "ZSpotify Music")
+        self.episodes_dir = os.path.join(self.download_dir, "ZSpotify Podcasts")
+
+        if self.args.music_dir:
+            self.music_dir = self.args.music_dir
+        if self.args.episodes_dir:
+            self.episodes_dir = self.args.episodes_dir
+
         self.album_in_filename = self.args.album_in_filename
         self.antiban_album_time = self.args.antiban_album
         self.skip_existing = self.args.skip_existing
@@ -57,12 +67,9 @@ class zspotify:
         parser.add_argument("-fs", "--full-show", help="Downloads all show episodes from id or url")
         parser.add_argument("-cd", "--config-dir", help="Folder to save the config files",
                           default=user_config_dir("ZSpotify"))
-        parser.add_argument("-d", "--download-dir", help="Folder to save the downloaded files",
-                          default=os.path.expanduser("~/Music/"))
-        parser.add_argument("-md", "--music-dir", help="Folder to save the downloaded music files",
-                          default=os.path.expanduser("~/Music/ZSpotify Music/"))
-        parser.add_argument("-pd", "--episodes-dir", help="Folder to save the downloaded episodes files",
-                            default=os.path.expanduser("~/Music/ZSpotify Podcasts/"))
+        parser.add_argument("-d", "--download-dir", help="Folder to save the downloaded files")
+        parser.add_argument("-md", "--music-dir", help="Folder to save the downloaded music files")
+        parser.add_argument("-pd", "--episodes-dir", help="Folder to save the downloaded episodes files")
         parser.add_argument("-v", "--version", help="Shows the current version of ZSpotify",
                             action="store_true")
         parser.add_argument("-af", "--audio-format", help="Audio format to download the tracks",
@@ -552,7 +559,10 @@ class zspotify:
                     self.download_all_show_episodes(show)
         if self.args.search:
             for query in self.split_input(self.args.search):
-                self.search(query)
+                if "spotify.com" in query:
+                    self.download_by_url(query)
+                else:
+                    self.search(query)
         elif len(sys.argv) <= 1:
             self.args.search = input("Search: ")
             if self.args.search:
