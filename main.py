@@ -624,13 +624,14 @@ class zspotify:
     def start(self):
         """Main client loop"""
         self.splash()
-        self.archive_migration()
         while not self.login():
             print("Invalid credentials")
 
         if self.args.version:
             print(f"ZSpotify version: {__version__}")
             return
+
+        self.archive_migration()
         if self.args.all_playlists:
                 self.download_all_user_playlists()
         if self.args.liked_songs:
