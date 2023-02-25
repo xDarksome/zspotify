@@ -273,6 +273,13 @@ class zspotify:
                             self.archive.add(id, musicinfo['show_name'], musicinfo['audio_name'], "episode")
                         else:
                             print("Could not find info for", id)
+            try:
+                os.remove(os.path.join(path, ".song_archive"))
+            except OSError:
+                pass
+        print("Migration complete")
+
+
 
 
 
@@ -594,7 +601,7 @@ class zspotify:
     def start(self):
         """Main client loop"""
         self.splash()
-
+        self.archive_migration()
         while not self.login():
             print("Invalid credentials")
 
