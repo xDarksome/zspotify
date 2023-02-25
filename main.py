@@ -130,7 +130,7 @@ class zspotify:
 
         self.album_in_filename = self.args.album_in_filename
         self.antiban_album_time = self.args.antiban_album
-        self.skip_existing = self.args.skip_existing
+        self.not_skip_existing = self.args.not_skip_existing
         self.skip_downloaded = self.args.skip_downloaded
         self.archive_file = os.path.join(self.args.config_dir, self.args.archive)
         self.archive = archive(self.archive_file)
@@ -168,9 +168,9 @@ class zspotify:
                             default=30, type=int)
         parser.add_argument("-f", "--force-premium", help="Force premium account",
                             action="store_true", default=False)
-        parser.add_argument("-s", "--skip-existing", help="Skip existing already downloaded tracks",
-                            action="store_true", default=True)
-        parser.add_argument("-ss", "--skip-downloaded", help="Skip already downloaded songs",
+        parser.add_argument("-ns", "--not-skip-existing", help="If flag setted NOT Skip existing already downloaded tracks",
+                            action="store_false", default=True)
+        parser.add_argument("-s", "--skip-downloaded", help="Skip already downloaded songs if exist in archive",
                             action="store_true", default=False)
         parser.add_argument("-cf", "--credentials-file", help="File to save the credentials",
                             default=os.path.join(user_config_dir("ZSpotify"), "credentials.json"))
@@ -272,7 +272,7 @@ class zspotify:
             )  # TRCK Track number/Position in set
         if track_id_str is not None:
             tags["COMM"] = id3.COMM(
-                encoding=3, lang="eng", text="id[spotify.com:track:" + track_id_str + "]"
+                encoding=3, lang="eng", text="https://open.spotify.com/track/spotify.com/" + track_id_str
             )  # COMM User comment
         if album_artist is not None:
             tags["TPE2"] = id3.TPE2(
@@ -362,7 +362,7 @@ class zspotify:
             fullpath = os.path.join(basepath, filename)
 
 
-        if self.skip_existing and os.path.exists(fullpath):
+        if self.not_skip_existing and os.path.exists(fullpath):
             print(f"Skipping {filename} - Already downloaded")
             return True
         downloader = Thread(target=self.zs_api.download_audio, args=(track_id, fullpath, True))
@@ -379,7 +379,7 @@ class zspotify:
             while self.zs_api.progress:
                 temp_progress = self.zs_api.progress
                 if not temp_progress:
-                    bar.update(temp_progress['total'] - bar.n)
+                    bar.update(bar.total - bar.n)
                     break
                 bar.update(temp_progress['downloaded'] - bar.n)
                 time.sleep(0.1)
@@ -522,7 +522,7 @@ class zspotify:
         fullpath = os.path.join(basepath, filename)
 
 
-        if self.skip_existing and os.path.exists(fullpath):
+        if self.not_skip_existing and os.path.exists(fullpath):
             print(f"Skipping {filename} - Already downloaded")
             return True
 
@@ -539,10 +539,12 @@ class zspotify:
                 unit_divisor=1024,
         ) as bar:
             while self.zs_api.progress:
-                bar.update(self.zs_api.progress['downloaded'] - bar.n)
-                time.sleep(0.1)
-                if not self.zs_api.progress:
+                temp_progress = self.zs_api.progress
+                if not temp_progress:
+                    bar.update(bar.total - bar.n)
                     break
+                bar.update(temp_progress['downloaded'] - bar.n)
+                time.sleep(0.1)
         print(f"Converting {episode['audio_name']} episode")
         downloader.join()
         self.archive.add(episode_id,
