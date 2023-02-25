@@ -34,7 +34,7 @@ class archive:
         with open(self.file, "w") as f:
             json.dump(self.data, f, indent=4)
 
-    def add(self, track_id, artist=None, track_name=None, fullpath=None, audio_type=None, timestamp=None):
+    def add(self, track_id, artist=None, track_name=None, fullpath=None, audio_type=None, timestamp=None, save=True):
         if not timestamp:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.data[track_id] = {"artist": artist,
@@ -44,7 +44,8 @@ class archive:
                                "timestamp": timestamp
                                }
         print("Added to archive: {} - {}".format(artist, track_name))
-        self.save()
+        if save:
+            self.save()
 
     def get(self, track_id):
         return self.data.get(track_id)
@@ -304,7 +305,9 @@ class zspotify:
                                      track_name=track['track_name'],
                                      fullpath=track['fullpath'],
                                      timestamp=track['timestamp'],
-                                     audio_type="music")
+                                     audio_type="music",
+                                     save=False)
+                self.archive.save()
             try:
                 os.remove(os.path.join(path, ".song_archive"))
             except OSError:
