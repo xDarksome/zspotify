@@ -34,12 +34,14 @@ class archive:
         with open(self.file, "w") as f:
             json.dump(self.data, f, indent=4)
 
-    def add(self, track_id, artist=None, track_name=None, fullpath=None, audio_type=None):
+    def add(self, track_id, artist=None, track_name=None, fullpath=None, audio_type=None, timestamp=None):
+        if not timestamp:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.data[track_id] = {"artist": artist,
                                "track_name": track_name,
                                "audio_type": audio_type,
                                "fullpath": fullpath,
-                               "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                               "timestamp": timestamp
                                }
         print("Added to archive: {} - {}".format(artist, track_name))
         self.save()
@@ -57,12 +59,38 @@ class archive:
     def get_all(self):
         return self.data
 
-    def get__ids_from_old_archive(self, old_archive_file):
+    def get_ids_from_old_archive(self, old_archive_file):
+        archive =[]
+        folder = os.path.dirname(old_archive_file)
         if os.path.exists(old_archive_file):
             with open(old_archive_file, "r", encoding="utf-8") as f:
-                ids = [line.strip().split("\t")[0] for line in f.readlines()]
-                return ids
+                for line in f.readlines():
+                    song = line.split("\t")
+                    try:
+                        track_id = song[0]
+                        timestamp = song[1]
+                        artist = song[2]
+                        track_name = song[3]
+                        fullpath = None
+                        if os.path.exists(os.path.join(folder, song[4])):
+                            fullpath = os.path.join(folder, song[4])
+
+                        archive.append({"track_id": track_id,
+                                        "track_artist": artist,
+                                        "track_name": track_name,
+                                        "timestamp": timestamp,
+                                        "fullpath": fullpath})
+                    except Exception as e:
+                        print("Error parsing line: {}".format(line))
+                        print(e)
+            return archive
         return None
+
+    def delete_not_existing(self):
+        for track_id in self.data:
+            if not os.path.exists(self.data[track_id]["fullpath"]):
+                self.remove(track_id)
+        self.save()
 
 
 
@@ -264,30 +292,19 @@ class zspotify:
     def archive_migration(self):
         """Migrates the old archive to the new one"""
         for path in [self.config_dir, self.download_dir, self.music_dir, self.episodes_dir]:
-            ids = self.archive.get__ids_from_old_archive(os.path.join(path, ".song_archive"))
-
-            if ids:
+            tracks = self.archive.get_ids_from_old_archive(os.path.join(path, ".song_archive"))
+            if tracks:
                 print("Found old archive, migrating to new one...")
-                for id in ids:
-                    if self.archive.exists(id):
+                for track in tracks:
+                    if self.archive.exists(track['track_id']):
+                        print(f"Skipping {track['track_name']} - Already in archive")
                         continue
-                    musicinfo = self.zs_api.get_audio_info(id)
-                    if musicinfo:
-                        self.archive.add(id,
-                                         artist=musicinfo['artist_name'],
-                                         track_name=musicinfo['audio_name'],
-                                         fullpath=None,
-                                         audio_type="music")
-                    else:
-                        musicinfo = self.zs_api.get_episode_info(id)
-                        if musicinfo:
-                            self.archive.add(id,
-                                             artist=musicinfo['show_name'],
-                                             track_name=musicinfo['audio_name'],
-                                             fullpath=None,
-                                             audio_type="episode")
-                        else:
-                            print("Could not find info for", id)
+                    self.archive.add(track['track_id'],
+                                     artist=track['track_artist'],
+                                     track_name=track['track_name'],
+                                     fullpath=track['fullpath'],
+                                     timestamp=track['timestamp'],
+                                     audio_type="music")
             try:
                 os.remove(os.path.join(path, ".song_archive"))
             except OSError:
