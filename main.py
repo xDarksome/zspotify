@@ -27,7 +27,11 @@ class archive:
     def load(self):
         if os.path.exists(self.file):
             with open(self.file, "r") as f:
-                return json.load(f)
+                try:
+                    return json.load(f)
+                except Exception as e:
+                    print("Error loading archive: {}".format(e))
+                    return {}
         return {}
 
     def save(self):
