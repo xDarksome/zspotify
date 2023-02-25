@@ -12,6 +12,8 @@ import platform
 from mutagen import id3
 import requests
 import json
+import datetime
+
 
 __version__ = "2.0.0_alpha"
 __author__ = [{"name": "Jonathan Salinas Vargas", "github": "https://github.com/jsavargas"},
@@ -32,9 +34,14 @@ class archive:
         with open(self.file, "w") as f:
             json.dump(self.data, f, indent=4)
 
-    def add(self, track_id, artist=None, track=None, type=None):
-        self.data[track_id] = {"artist": artist, "track": track, "type": type}
-        print("Added to archive: {} - {}".format(artist, track))
+    def add(self, track_id, artist=None, track_name=None, fullpath=None, audio_type=None):
+        self.data[track_id] = {"artist": artist,
+                               "track_name": track_name,
+                               "audio_type": audio_type,
+                               "fullpath": fullpath,
+                               "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                               }
+        print("Added to archive: {} - {}".format(artist, track_name))
         self.save()
 
     def get(self, track_id):
@@ -266,11 +273,19 @@ class zspotify:
                         continue
                     musicinfo = self.zs_api.get_audio_info(id)
                     if musicinfo:
-                        self.archive.add(id, musicinfo['artist_name'], musicinfo['audio_name'], "music")
+                        self.archive.add(id,
+                                         artist=musicinfo['artist_name'],
+                                         track_name=musicinfo['audio_name'],
+                                         fullpath=None,
+                                         audio_type="music")
                     else:
                         musicinfo = self.zs_api.get_episode_info(id)
                         if musicinfo:
-                            self.archive.add(id, musicinfo['show_name'], musicinfo['audio_name'], "episode")
+                            self.archive.add(id,
+                                             artist=musicinfo['show_name'],
+                                             track_name=musicinfo['audio_name'],
+                                             fullpath=None,
+                                             audio_type="episode")
                         else:
                             print("Could not find info for", id)
             try:
@@ -345,7 +360,11 @@ class zspotify:
                 bar.update(temp_progress['downloaded'] - bar.n)
                 time.sleep(0.1)
         print(f"Converting {filename}")
-        self.archive.add(track_id, track['artist_name'], track['audio_name'], "music")
+        self.archive.add(track_id,
+                         artist=track['artist_name'],
+                         track_name=track['audio_name'],
+                         fullpath=fullpath,
+                         audio_type="music")
         downloader.join()
         print(f"Set audiotags {filename}")
         self.set_audio_tags(fullpath,
@@ -502,7 +521,11 @@ class zspotify:
                     break
         print(f"Converting {episode['audio_name']} episode")
         downloader.join()
-        self.archive.add(episode_id, episode['show_name'], episode['audio_name'], "episode")
+        self.archive.add(episode_id,
+                         artist=episode['show_name'],
+                         track_name=episode['audio_name'],
+                         fullpath=fullpath,
+                         audio_type="episode")
         print(f"Set audiotags {episode['audio_name']}")
         self.set_audio_tags(fullpath,
                             artists=episode['show_name'],
