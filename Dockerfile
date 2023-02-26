@@ -18,7 +18,7 @@ FROM base
 WORKDIR /app
 COPY --from=builder /install /usr/local
 
-COPY zspotify.py /app
+COPY *.py /app
 
 VOLUME /download /config
 
