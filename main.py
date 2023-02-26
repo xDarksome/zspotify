@@ -272,7 +272,7 @@ class zspotify:
             )  # TRCK Track number/Position in set
         if track_id_str is not None:
             tags["COMM"] = id3.COMM(
-                encoding=3, lang="eng", text="https://open.spotify.com/track/spotify.com/" + track_id_str
+                encoding=3, lang="eng", text="https://open.spotify.com/track/" + track_id_str
             )  # COMM User comment
         if album_artist is not None:
             tags["TPE2"] = id3.TPE2(
