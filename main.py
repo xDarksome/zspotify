@@ -316,7 +316,7 @@ class zspotify:
                 os.remove(os.path.join(path, ".song_archive"))
             except OSError:
                 pass
-        print("Migration complete")
+            print(f"Migration complete from file: {os.path.join(path, '.song_archive')}")
 
 
 
@@ -376,13 +376,12 @@ class zspotify:
                 unit_scale=True,
                 unit_divisor=1024,
         ) as bar:
-            while self.zs_api.progress:
-                temp_progress = self.zs_api.progress
-                if not temp_progress:
-                    bar.update(bar.total - bar.n)
-                    break
-                bar.update(temp_progress['downloaded'] - bar.n)
+            progress = self.zs_api.progress
+            while progress:
+                bar.update(progress['downloaded'] - bar.n)
                 time.sleep(0.1)
+                progress = self.zs_api.progress
+            bar.update(bar.total)
         print(f"Converting {filename}")
         self.archive.add(track_id,
                          artist=track['artist_name'],
@@ -538,13 +537,12 @@ class zspotify:
                 unit_scale=True,
                 unit_divisor=1024,
         ) as bar:
-            while self.zs_api.progress:
-                temp_progress = self.zs_api.progress
-                if not temp_progress:
-                    bar.update(bar.total - bar.n)
-                    break
-                bar.update(temp_progress['downloaded'] - bar.n)
+            progress = self.zs_api.progress
+            while progress:
+                bar.update(progress['downloaded'] - bar.n)
                 time.sleep(0.1)
+                progress = self.zs_api.progress
+            bar.update(bar.total)
         print(f"Converting {episode['audio_name']} episode")
         downloader.join()
         self.archive.add(episode_id,
