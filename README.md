@@ -16,6 +16,8 @@
 
 * [GitHub](https://github.com/jsavargas/zspotify) - GitHub of this repository.
 * [DockerHub](https://hub.docker.com/r/jsavargas/zspotify) - DockerHub of this repository.
+* [Discord](https://discord.gg/grCt4AufmC) - Discord of this repository.
+
 
 Fork of https://github.com/Footsiefat/zspotify
 
