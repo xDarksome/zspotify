@@ -141,7 +141,8 @@ class zspotify:
         parser = argparse.ArgumentParser()
         parser.add_argument("search", help="Searches for a track, album, artist or playlist or download by url",
                           const=None, nargs="?")
-        parser.add_argument("-ap", "--all-playlists", help="Downloads a saved playlist from your account", action="store_true")
+        parser.add_argument("-ap", "--all-playlists", help="Downloads all saved playlist from your library", action="store_true")
+        parser.add_argument("-sp", "--select-playlists", help="Downloads a saved playlist from your library", action="store_true")
         parser.add_argument("-ls", "--liked-songs", help="Downloads your liked songs", action="store_true")
         parser.add_argument("-pl", "--playlist", help="Download playlist by id or url")
         parser.add_argument("-tr", "--track", help="Downloads a track from their id or url")
@@ -272,7 +273,7 @@ class zspotify:
             )  # TRCK Track number/Position in set
         if track_id_str is not None:
             tags["COMM"] = id3.COMM(
-                encoding=3, lang="eng", text="https://open.spotify.com/track/spotify.com/" + track_id_str
+                encoding=3, lang="eng", text="https://open.spotify.com/track/" + track_id_str
             )  # COMM User comment
         if album_artist is not None:
             tags["TPE2"] = id3.TPE2(
@@ -427,6 +428,50 @@ class zspotify:
             self.download_playlist(playlist['id'])
             self.antiban_wait(self.antiban_album_time)
         print("Finished downloading all user playlists")
+
+
+    def download_select_user_playlists(self):
+        playlists = self.zs_api.get_all_user_playlists()
+        if not playlists:
+            print("No playlists found")
+            return False
+        for i, playlist in enumerate(playlists['playlists']):
+            print(f"    {i + 1}. {playlist['name']}")
+
+        print('''
+        > SELECT A PLAYLIST BY ID.
+        > SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID's.
+          For example, typing 10 to get one playlist or 10-20 to get
+          every playlist from 10-20 (inclusive).
+        > SELECT A MULTIPLE PLAYLISTS BY ADDING A COMMA BETWEEN IDs.
+          For example, typing 10,11,20 will select playlists
+          10, 11 and 20 respectively.
+          Typing 1,11-20 will select playlists 1 and 11-20 (inclusive).
+        ''')
+        user_input = input("ID(s): ")
+
+        # Parse user input
+        user_formatted_input = set()
+        for part in user_input.split(','):
+            x = part.split('-')
+            user_formatted_input.update(range(int(x[0]),int(x[-1])+1))
+        sorted(user_formatted_input)
+
+        # Clean user input
+        invalid_ids = []
+        playlist_ids = []
+        for id in user_formatted_input:
+            if id > len(playlists['playlists']) or id < 1:
+                invalid_ids.append(id)
+            else:
+                playlist_ids.append(playlists['playlists'][id - 1]['id'])
+        if invalid_ids != []:
+            print(f'{invalid_ids} do not exist, downloading the rest')
+
+        for playlist in playlist_ids:
+            self.download_playlist(playlist)
+            self.antiban_wait(self.antiban_album_time)
+        print("Finished downloading selected playlists")
 
 
     def download_album(self, album_id):
@@ -658,6 +703,8 @@ class zspotify:
         self.archive_migration()
         if self.args.all_playlists:
                 self.download_all_user_playlists()
+        if self.args.select_playlists:
+                self.download_select_user_playlists()
         if self.args.liked_songs:
             self.download_liked_songs()
         if self.args.playlist:
