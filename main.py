@@ -104,7 +104,7 @@ class zspotify:
 
     def __init__(self):
         self.SANITIZE_CHARS = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
-        self.SEPARATORS = [" ", ",", ";"]
+        self.SEPARATORS = [",", ";"]
         self.args = self.parse_args()
         self.zs_api = zspotify_api(
             sanitize=self.SANITIZE_CHARS,
@@ -112,7 +112,8 @@ class zspotify:
             music_format=self.args.audio_format,
             force_premium=self.args.force_premium,
             anti_ban_wait_time=self.args.antiban_time,
-            credentials=self.args.credentials_file)
+            credentials=self.args.credentials_file,
+            limit=self.args.limit)
 
         self.config_dir = self.args.config_dir
         self.download_dir = os.path.expanduser("~/Music/")
@@ -167,6 +168,8 @@ class zspotify:
                             default=5, type=int)
         parser.add_argument("--antiban-album", help="Time to wait between album downloads to avoid Ban",
                             default=30, type=int)
+        parser.add_argument("--limit", help="limit",
+                            default=10, type=int)
         parser.add_argument("-f", "--force-premium", help="Force premium account",
                             action="store_true", default=False)
         parser.add_argument("-ns", "--not-skip-existing", help="If flag setted NOT Skip existing already downloaded tracks",
