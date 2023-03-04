@@ -14,10 +14,11 @@ RUN /usr/local/bin/python -m pip install --upgrade pip && \
     pip install --prefix="/install" -r requirements.txt \
     && rm -rf /var/lib/apt/lists/*
 
-FROM ffmpeg
+FROM python:3.9-alpine
 
 WORKDIR /app
 COPY --from=builder /install /usr/local
+COPY --from=ffmpeg /usr/ /usr/
 
 COPY *.py /app/
 
