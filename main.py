@@ -385,7 +385,7 @@ class zspotify:
                 bar.update(progress['downloaded'] - bar.n)
                 time.sleep(0.1)
                 progress = self.zs_api.progress
-            bar.update(bar.total)
+            bar.update(bar.total - bar.n)
         print(f"Converting {filename}")
         self.archive.add(track_id,
                          artist=track['artist_name'],
@@ -590,7 +590,7 @@ class zspotify:
                 bar.update(progress['downloaded'] - bar.n)
                 time.sleep(0.1)
                 progress = self.zs_api.progress
-            bar.update(bar.total)
+            bar.update(bar.total - bar.n)
         print(f"Converting {episode['audio_name']} episode")
         downloader.join()
         self.archive.add(episode_id,
