@@ -19,6 +19,13 @@ __version__ = "2.0.0_alpha"
 __author__ = [{"name": "Jonathan Salinas Vargas", "github": "https://github.com/jsavargas"},
               {"name": "Yuriy Kovrigin", "github": "https://github.com/Bionded"}]
 
+
+_ANTI_BAN_WAIT_TIME             = os.environ.get('ANTI_BAN_WAIT_TIME', 5)
+_ANTI_BAN_WAIT_TIME_ALBUMS      = os.environ.get('ANTI_BAN_WAIT_TIME_ALBUMS', 30)
+_LIMIT_RESULTS                  = os.environ.get('LIMIT_RESULTS', 10)
+
+
+
 class archive:
     def __init__(self, file):
         self.file = file
@@ -165,11 +172,11 @@ class zspotify:
         parser.add_argument("--album-in-filename", help="Adds the album name to the filename",
                             action="store_true", default=False)
         parser.add_argument("--antiban-time", help="Time to wait between downloads to avoid Ban",
-                            default=5, type=int)
+                            default=_ANTI_BAN_WAIT_TIME, type=int)
         parser.add_argument("--antiban-album", help="Time to wait between album downloads to avoid Ban",
-                            default=30, type=int)
+                            default=_ANTI_BAN_WAIT_TIME_ALBUMS, type=int)
         parser.add_argument("--limit", help="limit",
-                            default=10, type=int)
+                            default=_LIMIT_RESULTS, type=int)
         parser.add_argument("-f", "--force-premium", help="Force premium account",
                             action="store_true", default=False)
         parser.add_argument("-ns", "--not-skip-existing", help="If flag setted NOT Skip existing already downloaded tracks",
