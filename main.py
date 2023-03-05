@@ -1,32 +1,32 @@
-import time
-
 from zspotify import zspotify_api
+
+from appdirs import user_config_dir
+from getpass import getpass
+from mutagen import id3
 from threading import Thread
 from tqdm import tqdm
-from getpass import getpass
-from appdirs import user_config_dir
+
 import argparse
-import os
-import sys
-import platform
-from mutagen import id3
-import requests
-import json
 import datetime
+import json
+import os
+import platform
+import requests
+import sys
+import time
 
 
 __version__ = "2.0.0_alpha"
 __author__ = [{"name": "Jonathan Salinas Vargas", "github": "https://github.com/jsavargas"},
               {"name": "Yuriy Kovrigin", "github": "https://github.com/Bionded"}]
 
-
-_ANTI_BAN_WAIT_TIME             = os.environ.get('ANTI_BAN_WAIT_TIME', 5)
-_ANTI_BAN_WAIT_TIME_ALBUMS      = os.environ.get('ANTI_BAN_WAIT_TIME_ALBUMS', 30)
-_LIMIT_RESULTS                  = os.environ.get('LIMIT_RESULTS', 10)
-
+_ANTI_BAN_WAIT_TIME = os.environ.get('ANTI_BAN_WAIT_TIME', 5)
+_ANTI_BAN_WAIT_TIME_ALBUMS = os.environ.get('ANTI_BAN_WAIT_TIME_ALBUMS', 30)
+_LIMIT_RESULTS = os.environ.get('LIMIT_RESULTS', 10)
 
 
 class archive:
+
     def __init__(self, file):
         self.file = file
         self.data = self.load()
@@ -45,7 +45,8 @@ class archive:
         with open(self.file, "w") as f:
             json.dump(self.data, f, indent=4)
 
-    def add(self, track_id, artist=None, track_name=None, fullpath=None, audio_type=None, timestamp=None, save=True):
+    def add(self, track_id, artist=None, track_name=None, fullpath=None,
+            audio_type=None, timestamp=None, save=True):
         if not timestamp:
             timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.data[track_id] = {"artist": artist,
@@ -105,8 +106,7 @@ class archive:
         self.save()
 
 
-
-#################### UTILS ####################
+# UTILS
 class zspotify:
 
     def __init__(self):
@@ -127,7 +127,6 @@ class zspotify:
         if self.args.download_dir:
             self.download_dir = os.path.expanduser(self.args.download_dir)
 
-
         self.music_dir = os.path.join(self.download_dir, "ZSpotify Music")
         self.episodes_dir = os.path.join(self.download_dir, "ZSpotify Podcasts")
 
@@ -143,52 +142,78 @@ class zspotify:
         self.archive_file = os.path.join(self.args.config_dir, self.args.archive)
         self.archive = archive(self.archive_file)
 
-
-
     def parse_args(self):
         parser = argparse.ArgumentParser()
-        parser.add_argument("search", help="Searches for a track, album, artist or playlist or download by url",
-                          const=None, nargs="?")
-        parser.add_argument("-ap", "--all-playlists", help="Downloads all saved playlist from your library", action="store_true")
-        parser.add_argument("-sp", "--select-playlists", help="Downloads a saved playlist from your library", action="store_true")
-        parser.add_argument("-ls", "--liked-songs", help="Downloads your liked songs", action="store_true")
-        parser.add_argument("-pl", "--playlist", help="Download playlist by id or url")
-        parser.add_argument("-tr", "--track", help="Downloads a track from their id or url")
-        parser.add_argument("-al", "--album", help="Downloads an album from their id or url")
-        parser.add_argument("-ar", "--artist", help="Downloads an artist from their id or url")
-        parser.add_argument("-ep", "--episode", help="Downloads a episode from their id or url")
-        parser.add_argument("-fs", "--full-show", help="Downloads all show episodes from id or url")
-        parser.add_argument("-cd", "--config-dir", help="Folder to save the config files",
-                          default=user_config_dir("ZSpotify"))
-        parser.add_argument("--archive", help="File to save the downloaded files",
-                          default="archive.json")
-        parser.add_argument("-d", "--download-dir", help="Folder to save the downloaded files")
-        parser.add_argument("-md", "--music-dir", help="Folder to save the downloaded music files")
-        parser.add_argument("-pd", "--episodes-dir", help="Folder to save the downloaded episodes files")
-        parser.add_argument("-v", "--version", help="Shows the current version of ZSpotify",
+        parser.add_argument("search",
+                            help="Searches for a track, album, artist or playlist or download by url",
+                            const=None, nargs="?")
+        parser.add_argument("-ap", "--all-playlists",
+                            help="Downloads all saved playlist from your library",
                             action="store_true")
-        parser.add_argument("-af", "--audio-format", help="Audio format to download the tracks",
+        parser.add_argument("-sp", "--select-playlists",
+                            help="Downloads a saved playlist from your library",
+                            action="store_true")
+        parser.add_argument("-ls", "--liked-songs",
+                            help="Downloads your liked songs",
+                            action="store_true")
+        parser.add_argument("-pl", "--playlist",
+                            help="Download playlist by id or url")
+        parser.add_argument("-tr", "--track",
+                            help="Downloads a track from their id or url")
+        parser.add_argument("-al", "--album",
+                            help="Downloads an album from their id or url")
+        parser.add_argument("-ar", "--artist",
+                            help="Downloads an artist from their id or url")
+        parser.add_argument("-ep", "--episode",
+                            help="Downloads a episode from their id or url")
+        parser.add_argument("-fs", "--full-show",
+                            help="Downloads all show episodes from id or url")
+        parser.add_argument("-cd", "--config-dir",
+                            help="Folder to save the config files",
+                            default=user_config_dir("ZSpotify"))
+        parser.add_argument("--archive",
+                            help="File to save the downloaded files",
+                            default="archive.json")
+        parser.add_argument("-d", "--download-dir",
+                            help="Folder to save the downloaded files")
+        parser.add_argument("-md", "--music-dir",
+                            help="Folder to save the downloaded music files")
+        parser.add_argument("-pd", "--episodes-dir",
+                            help="Folder to save the downloaded episodes files")
+        parser.add_argument("-v", "--version",
+                            help="Shows the current version of ZSpotify",
+                            action="store_true")
+        parser.add_argument("-af", "--audio-format",
+                            help="Audio format to download the tracks",
                             default="mp3", choices=["mp3", "ogg"])
-        parser.add_argument("--album-in-filename", help="Adds the album name to the filename",
+        parser.add_argument("--album-in-filename",
+                            help="Adds the album name to the filename",
                             action="store_true", default=False)
-        parser.add_argument("--antiban-time", help="Time to wait between downloads to avoid Ban",
+        parser.add_argument("--antiban-time",
+                            help="Time to wait between downloads to avoid Ban",
                             default=_ANTI_BAN_WAIT_TIME, type=int)
-        parser.add_argument("--antiban-album", help="Time to wait between album downloads to avoid Ban",
+        parser.add_argument("--antiban-album",
+                            help="Time to wait between album downloads to avoid Ban",
                             default=_ANTI_BAN_WAIT_TIME_ALBUMS, type=int)
-        parser.add_argument("--limit", help="limit",
+        parser.add_argument("--limit",
+                            help="limit",
                             default=_LIMIT_RESULTS, type=int)
-        parser.add_argument("-f", "--force-premium", help="Force premium account",
+        parser.add_argument("-f", "--force-premium",
+                            help="Force premium account",
                             action="store_true", default=False)
-        parser.add_argument("-ns", "--not-skip-existing", help="If flag setted NOT Skip existing already downloaded tracks",
+        parser.add_argument("-ns", "--not-skip-existing",
+                            help="If flag setted NOT Skip existing already downloaded tracks",
                             action="store_false", default=True)
-        parser.add_argument("-s", "--skip-downloaded", help="Skip already downloaded songs if exist in archive",
+        parser.add_argument("-s", "--skip-downloaded",
+                            help="Skip already downloaded songs if exist in archive",
                             action="store_true", default=False)
-        parser.add_argument("-cf", "--credentials-file", help="File to save the credentials",
+        parser.add_argument("-cf", "--credentials-file",
+                            help="File to save the credentials",
                             default=os.path.join(user_config_dir("ZSpotify"), "credentials.json"))
-        parser.add_argument("-bd", "--bulk-download", help="Bulk download from file with urls" )
+        parser.add_argument("-bd", "--bulk-download",
+                            help="Bulk download from file with urls")
 
         return parser.parse_args()
-
 
     def splash(self):
         """Displays splash screen"""
@@ -202,7 +227,6 @@ class zspotify:
         """
         )
         print(f"version: {__version__}")
-
 
     def split_input(self, selection):
         """Splits the input into a list"""
@@ -219,19 +243,17 @@ class zspotify:
         else:
             os.system("clear")
 
-    def antiban_wait(self,seconds: int = 5):
+    def antiban_wait(self, seconds: int = 5):
         """ Pause between albums for a set number of seconds """
         for i in range(seconds)[::-1]:
             print("\rWait for Next Download in %d second(s)..." % (i + 1), end="")
             time.sleep(1)
-
 
     def sanitize_data(self, value):
         """Returns given string with problematic removed"""
         for i in self.SANITIZE_CHARS:
             value = value.replace(i, "")
         return value.replace("|", "-")
-
 
     def login(self):
         """Login to Spotify"""
@@ -243,18 +265,17 @@ class zspotify:
         password = getpass()
         return self.zs_api.login(username, password)
 
-
     def set_audio_tags(self,
-                               filename,
-                               artists=None,
-                               name=None,
-                               album_name=None,
-                               release_year=None,
-                               disc_number=None,
-                               track_number=None,
-                               track_id_str=None,
-                               album_artist=None,
-                               image_url=None):
+                       filename,
+                       artists=None,
+                       name=None,
+                       album_name=None,
+                       release_year=None,
+                       disc_number=None,
+                       track_number=None,
+                       track_id_str=None,
+                       album_artist=None,
+                       image_url=None):
         """sets music_tag metadata using mutagen"""
         artist = artists
 
@@ -263,36 +284,46 @@ class zspotify:
 
         tags = id3.ID3(filename)
         if artist is not None:
+            # TPE1 Lead Artist/Performer/Soloist/Group
             tags["TPE1"] = id3.TPE1(
                 encoding=3, text=artist
-            )  # TPE1 Lead Artist/Performer/Soloist/Group
+            )
         if name is not None:
+            # TIT2 Title/songname/content description
             tags["TIT2"] = id3.TIT2(
                 encoding=3, text=name
-            )  # TIT2 Title/songname/content description
+            )
         if album_name is not None:
-            tags["TALB"] = id3.TALB(encoding=3, text=album_name)  # TALB Album/Movie/Show title
+            # TALB Album/Movie/Show title
+            tags["TALB"] = id3.TALB(encoding=3, text=album_name)
         if release_year is not None:
-            tags["TDRC"] = id3.TDRC(encoding=3, text=release_year)  # TDRC Recording time
-            tags["TDOR"] = id3.TDOR(encoding=3, text=release_year)  # TDOR Original release time
+            # TDRC Recording time
+            tags["TDRC"] = id3.TDRC(encoding=3, text=release_year)
+            # TDOR Original release time
+            tags["TDOR"] = id3.TDOR(encoding=3, text=release_year)
         if disc_number is not None:
-            tags["TPOS"] = id3.TPOS(encoding=3, text=str(disc_number))  # TPOS Part of a set
+            # TPOS Part of a set
+            tags["TPOS"] = id3.TPOS(encoding=3, text=str(disc_number))
         if track_number is not None:
+            # TRCK Track number/Position in set
             tags["TRCK"] = id3.TRCK(
                 encoding=3, text=str(track_number)
-            )  # TRCK Track number/Position in set
+            )
         if track_id_str is not None:
+            # COMM User comment
             tags["COMM"] = id3.COMM(
                 encoding=3, lang="eng", text="https://open.spotify.com/track/" + track_id_str
-            )  # COMM User comment
+            )
         if album_artist is not None:
+            # TPE2 Band/orchestra/accompaniment
             tags["TPE2"] = id3.TPE2(
                 encoding=3, text=album_artist
-            )  # TPE2 Band/orchestra/accompaniment
+            )
         if image_url is not None:
             albumart = requests.get(image_url).content if image_url else None
             if albumart:
-                tags["APIC"] = id3.APIC(  # APIC Attached (or linked) Picture.
+                # APIC Attached (or linked) Picture.
+                tags["APIC"] = id3.APIC(
                     encoding=3,
                     mime="image/jpeg",
                     type=3,
@@ -302,9 +333,7 @@ class zspotify:
         # TCON Genre - TODO
         tags.save()
 
-    ###################################################################
-    ######################### ARCHIVE #################################
-
+    # ARCHIVE
     def archive_migration(self):
         """Migrates the old archive to the new one"""
         for path in [self.config_dir, self.download_dir, self.music_dir, self.episodes_dir]:
@@ -329,21 +358,13 @@ class zspotify:
                 pass
             print(f"Migration complete from file: {os.path.join(path, '.song_archive')}")
 
-
-
-
-
-
-
-
-    ###################################################################
-    ####################### DOWNLOADERS ###############################
+    # DOWNLOADERS
     def download_track(self, track_id, path=None, caller=None):
         if self.args.skip_downloaded and self.archive.exists(track_id):
             print(f"Skipping {track_id} - Already Downloaded")
             return True
         track = self.zs_api.get_audio_info(track_id)
-        if track['is_playable']==False:
+        if track['is_playable'] == False:
             print(f"Skipping {track['audio_name']} - Not Available")
             return True
 
@@ -372,7 +393,6 @@ class zspotify:
             filename = self.sanitize_data(f"{track['artist_name']} - {track['audio_name']}.{self.args.audio_format}")
             fullpath = os.path.join(basepath, filename)
 
-
         if self.not_skip_existing and os.path.exists(fullpath):
             print(f"Skipping {filename} - Already downloaded")
             return True
@@ -386,13 +406,13 @@ class zspotify:
                 unit="B",
                 unit_scale=True,
                 unit_divisor=1024,
-        ) as bar:
+        ) as progress_bar:
             progress = self.zs_api.progress
             while progress:
-                bar.update(progress['downloaded'] - bar.n)
+                progress_bar.update(progress['downloaded'] - progress_bar.n)
                 time.sleep(0.1)
                 progress = self.zs_api.progress
-            bar.update(bar.total - bar.n)
+            progress_bar.update(progress_bar.total - progress_bar.n)
         print(f"Converting {filename}")
         self.archive.add(track_id,
                          artist=track['artist_name'],
@@ -412,7 +432,6 @@ class zspotify:
                             image_url=track['image_url'])
         print(f"Finished downloading {filename}")
 
-
     def download_playlist(self, playlist_id):
         playlist = self.zs_api.get_playlist_info(playlist_id)
         if not playlist:
@@ -428,7 +447,6 @@ class zspotify:
             self.download_track(song['id'], basepath, "playlist")
         print(f"Finished downloading {playlist['name']} playlist")
 
-
     def download_all_user_playlists(self):
         playlists = self.zs_api.get_all_user_playlists()
         if not playlists:
@@ -438,7 +456,6 @@ class zspotify:
             self.download_playlist(playlist['id'])
             self.antiban_wait(self.antiban_album_time)
         print("Finished downloading all user playlists")
-
 
     def download_select_user_playlists(self):
         playlists = self.zs_api.get_all_user_playlists()
@@ -464,25 +481,24 @@ class zspotify:
         user_formatted_input = set()
         for part in user_input.split(','):
             x = part.split('-')
-            user_formatted_input.update(range(int(x[0]),int(x[-1])+1))
+            user_formatted_input.update(range(int(x[0]), int(x[-1])+1))
         sorted(user_formatted_input)
 
         # Clean user input
         invalid_ids = []
         playlist_ids = []
-        for id in user_formatted_input:
-            if id > len(playlists['playlists']) or id < 1:
-                invalid_ids.append(id)
+        for track_id in user_formatted_input:
+            if track_id > len(playlists['playlists']) or track_id < 1:
+                invalid_ids.append(track_id)
             else:
-                playlist_ids.append(playlists['playlists'][id - 1]['id'])
-        if invalid_ids != []:
+                playlist_ids.append(playlists['playlists'][track_id - 1]['id'])
+        if invalid_ids:
             print(f'{invalid_ids} do not exist, downloading the rest')
 
         for playlist in playlist_ids:
             self.download_playlist(playlist)
             self.antiban_wait(self.antiban_album_time)
         print("Finished downloading selected playlists")
-
 
     def download_album(self, album_id):
         album = self.zs_api.get_album_info(album_id)
@@ -500,9 +516,6 @@ class zspotify:
             self.download_track(song['id'], basepath, "album")
         print(f"Finished downloading {album['artists']} - {album['name']} album")
         return True
-
-
-
 
     def download_artist(self, artist_id):
         artist = self.zs_api.get_artist_info(artist_id)
@@ -550,8 +563,6 @@ class zspotify:
             return False
         return ret
 
-
-
     def download_episode(self, episode_id, caller="episode"):
         if self.args.skip_downloaded and self.archive.exists(episode_id):
             print(f"Skipping {episode_id} - Already Downloaded")
@@ -575,12 +586,11 @@ class zspotify:
 
         fullpath = os.path.join(basepath, filename)
 
-
         if self.not_skip_existing and os.path.exists(fullpath):
             print(f"Skipping {filename} - Already downloaded")
             return True
 
-        #self.zs_api.download_audio(episode_id, fullpath, True)
+        # self.zs_api.download_audio(episode_id, fullpath, True)
         downloader = Thread(target=self.zs_api.download_audio, args=(episode_id, fullpath, True))
         downloader.start()
         while not self.zs_api.progress:
@@ -591,13 +601,13 @@ class zspotify:
                 unit="B",
                 unit_scale=True,
                 unit_divisor=1024,
-        ) as bar:
+        ) as progress_bar:
             progress = self.zs_api.progress
             while progress:
-                bar.update(progress['downloaded'] - bar.n)
+                progress_bar.update(progress['downloaded'] - progress_bar.n)
                 time.sleep(0.1)
                 progress = self.zs_api.progress
-            bar.update(bar.total - bar.n)
+            progress_bar.update(progress_bar.total - progress_bar.n)
         print(f"Converting {episode['audio_name']} episode")
         downloader.join()
         self.archive.add(episode_id,
@@ -614,9 +624,6 @@ class zspotify:
                             image_url=episode['image_url'])
         print(f"Finished downloading {episode['audio_name']} episode")
 
-
-
-
     def download_all_show_episodes(self, show_id):
         show = self.zs_api.get_show_info(show_id)
         if not show:
@@ -632,13 +639,13 @@ class zspotify:
         return True
 
     def search(self, query):
-        #TODO: Add search by artist, album, playlist, etc.
+        # TODO: Add search by artist, album, playlist, etc.
         results = self.zs_api.search(query)
         if not results:
             print("No results found")
             return False
         print("Search results:")
-        print ("###TRACKS###")
+        print("###TRACKS###")
         i = 0
         full_results = []
         for result in results['tracks']:
@@ -646,25 +653,25 @@ class zspotify:
             result['type'] = 'track'
             full_results.append(result)
             i += 1
-        print ("###ALBUMS###")
+        print("###ALBUMS###")
         for result in results['albums']:
             print(f"{i}. {result['artists']} - {result['name']}")
             result['type'] = 'album'
             full_results.append(result)
             i += 1
-        print ("###PLAYLISTS###")
+        print("###PLAYLISTS###")
         for result in results['playlists']:
             print(f"{i}. {result['name']}")
             result['type'] = 'playlist'
             full_results.append(result)
             i += 1
-        print ("###ARTISTS###")
+        print("###ARTISTS###")
         for result in results['artists']:
             print(f"{i}. {result['name']}")
             result['type'] = 'artist'
             full_results.append(result)
             i += 1
-        print ("")
+        print("")
         print("Enter the number of the item you want to download")
         print(f"allowed delimiters: {self.SEPARATORS}")
         print("Enter 'all' to download all items")
@@ -698,8 +705,6 @@ class zspotify:
                 self.download_artist(result['id'])
         return True
 
-
-
     def start(self):
         """Main client loop"""
         self.splash()
@@ -712,9 +717,9 @@ class zspotify:
 
         self.archive_migration()
         if self.args.all_playlists:
-                self.download_all_user_playlists()
+            self.download_all_user_playlists()
         if self.args.select_playlists:
-                self.download_select_user_playlists()
+            self.download_select_user_playlists()
         if self.args.liked_songs:
             self.download_liked_songs()
         if self.args.playlist:
@@ -761,8 +766,8 @@ class zspotify:
                 else:
                     self.search(query)
         if self.args.bulk_download:
-            with open(self.args.bulk_download, "r") as f:
-                for line in f:
+            with open(self.args.bulk_download, "r") as file:
+                for line in file:
                     for url in self.split_input(line.strip()):
                         self.download_by_url(url)
         elif len(sys.argv) <= 1:
@@ -771,6 +776,7 @@ class zspotify:
                 self.search(self.args.search)
             else:
                 print("Invalid input")
+
 
 if __name__ == "__main__":
     try:
