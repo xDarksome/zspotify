@@ -70,7 +70,8 @@ class zspotify_api:
 
         if self.credentials.is_file():
             try:
-                self.session = Session.Builder().stored_file(stored_credentials=self.credentials).create()
+                self.session = Session.Builder().stored_file(
+                    stored_credentials=self.credentials).create()
                 self.token = self.session.tokens().get("user-read-email")
                 self.token_for_saved = self.session.tokens().get("user-library-read")
                 self.check_premium()
@@ -79,10 +80,13 @@ class zspotify_api:
                 return False
         elif username and password:
             try:
-                Session.Builder().user_pass(username, password).stored_file(self.credentials).create()
+                Session.Builder().user_pass(
+                    username, password).stored_file(
+                    self.credentials).create()
                 shutil.copyfile("credentials.json", self.credentials)
                 os.remove("credentials.json")
-                self.session = Session.Builder().stored_file(stored_credentials=self.credentials).create()
+                self.session = Session.Builder().stored_file(
+                    stored_credentials=self.credentials).create()
                 self.token = self.session.tokens().get("user-read-email")
                 self.token_for_saved = self.session.tokens().get("user-library-read")
                 self.check_premium()
@@ -93,10 +97,12 @@ class zspotify_api:
                 return False
         else:
             return False
+
     def check_premium(self):
         """If user has spotify premium return true"""
         if self.session is not None:
-            if self.session.get_user_attribute("type") == "premium" or self.force_premium:
+            if self.session.get_user_attribute(
+                    "type") == "premium" or self.force_premium:
                 self.quality = AudioQuality.VERY_HIGH
             else:
                 self.quality = AudioQuality.HIGH
@@ -212,7 +218,8 @@ class zspotify_api:
 
     # CONVERTING
 
-    # Functions directly related to modifying the downloaded audio and its metadata
+    # Functions directly related to modifying the downloaded audio and its
+    # metadata
     def convert_audio_format(self, segments: AudioSegment, to_file):
         """Converts raw audio into playable mp3 or ogg vorbis"""
         # print("###   CONVERTING TO " + MUSIC_FORMAT.upper() + "   ###")
@@ -236,7 +243,8 @@ class zspotify_api:
                 ).text
             )
 
-            # Sum the size of the images, compares and saves the index of the largest image size
+            # Sum the size of the images, compares and saves the index of the
+            # largest image size
             sum_total = []
             for sum_px in info['tracks'][0]['album']['images']:
                 sum_total.append(sum_px['height'] + sum_px['width'])
@@ -251,7 +259,8 @@ class zspotify_api:
             album_name = self.sanitize_data(info["tracks"][0]["album"]["name"])
             song_name = self.sanitize_data(info["tracks"][0]["name"])
             image_url = info["tracks"][0]["album"]["images"][img_index]["url"] if img_index >= 0 else None
-            release_year = info["tracks"][0]["album"]["release_date"].split("-")[0]
+            release_year = info["tracks"][0]["album"]["release_date"].split(
+                "-")[0]
             disc_number = info["tracks"][0]["disc_number"]
             track_number = info["tracks"][0]["track_number"]
             scraped_song_id = info["tracks"][0]["id"]
@@ -301,8 +310,9 @@ class zspotify_api:
             headers = {"Authorization": f"Bearer {self.token}"}
             params = {"limit": limit, "offset": offset}
             resp = requests.get(
-                "https://api.spotify.com/v1/me/playlists", headers=headers, params=params
-            ).json()
+                "https://api.spotify.com/v1/me/playlists",
+                headers=headers,
+                params=params).json()
             offset += limit
             playlists.extend(resp["items"])
 
@@ -343,7 +353,10 @@ class zspotify_api:
             f"https://api.spotify.com/v1/playlists/{playlist_id}?fields=name,owner(display_name)&market=from_token",
             headers=headers,
         ).json()
-        return {"name": resp["name"].strip(), "owner": resp["owner"]["display_name"].strip(), "id": playlist_id}
+        return {
+            "name": resp["name"].strip(),
+            "owner": resp["owner"]["display_name"].strip(),
+            "id": playlist_id}
 
     def get_album_songs(self, album_id):
         """Returns album tracklist"""
@@ -354,7 +367,10 @@ class zspotify_api:
 
         while True:
             headers = {"Authorization": f"Bearer {self.token}"}
-            params = {"limit": limit, "include_groups": include_groups, "offset": offset}
+            params = {
+                "limit": limit,
+                "include_groups": include_groups,
+                "offset": offset}
             resp = requests.get(
                 f"https://api.spotify.com/v1/albums/{album_id}/tracks",
                 headers=headers,
@@ -362,8 +378,10 @@ class zspotify_api:
             ).json()
             offset += limit
             for song in resp["items"]:
-                audios.append({"id": song["id"], "name": song["name"], "number": song["track_number"]})
-                #audios.append(song["id"])
+                audios.append({"id": song["id"],
+                               "name": song["name"],
+                               "number": song["track_number"]})
+                # audios.append(song["id"])
 
             if len(resp["items"]) < limit:
                 break
@@ -381,14 +399,20 @@ class zspotify_api:
         for artist in resp["artists"]:
             artists.append(self.sanitize_data(artist["name"]))
 
-        if m := re.search("(\d{4})", resp["release_date"]):
-            return {"artists": self.conv_artist_format(artists), "name": resp["name"],
-                    "total_tracks": resp["total_tracks"], "release_date": m.group(1)}
+        if m := re.search("(\\d{4})", resp["release_date"]):
+            return {
+                "artists": self.conv_artist_format(artists),
+                "name": resp["name"],
+                "total_tracks": resp["total_tracks"],
+                "release_date": m.group(1)}
         else:
-            return {"artists": self.conv_artist_format(artists), "name": resp["name"],
-                    "total_tracks": resp["total_tracks"], "release_date": resp["release_date"]}
+            return {
+                "artists": self.conv_artist_format(artists),
+                "name": resp["name"],
+                "total_tracks": resp["total_tracks"],
+                "release_date": resp["release_date"]}
 
-    #def get_artist_albums(self, artist_id):
+    # def get_artist_albums(self, artist_id):
     #    """Returns artist's albums"""
     #    headers = {"Authorization": f"Bearer {self.token}"}
     #    resp = requests.get(
@@ -405,7 +429,10 @@ class zspotify_api:
         include_groups = "album,compilation"
 
         headers = {"Authorization": f"Bearer {self.token}"}
-        params = {"limit": limit, "include_groups": include_groups, "offset": offset}
+        params = {
+            "limit": limit,
+            "include_groups": include_groups,
+            "offset": offset}
         albums = []
         resp = requests.get(
             f"https://api.spotify.com/v1/artists/{artists_id}/albums",
@@ -414,14 +441,17 @@ class zspotify_api:
         ).json()
         # print("###   Album Name:", resp['items'], "###")
         for album in resp["items"]:
-            if m := re.search("(\d{4})", album["release_date"]):
-                albums.append({"id": album["id"], "name": album["name"], "release_date": m.group(1),
+            if m := re.search("(\\d{4})", album["release_date"]):
+                albums.append({"id": album["id"],
+                               "name": album["name"],
+                               "release_date": m.group(1),
                                "total_tracks": album["total_tracks"]})
             else:
-                albums.append({"id": album["id"], "name": album["name"], "release_date": album["release_date"],
+                albums.append({"id": album["id"],
+                               "name": album["name"],
+                               "release_date": album["release_date"],
                                "total_tracks": album["total_tracks"]})
         return resp["items"]
-
 
     def get_liked_tracks(self):
         """Returns user's saved tracks"""
@@ -433,8 +463,9 @@ class zspotify_api:
             headers = {"Authorization": f"Bearer {self.token_for_saved}"}
             params = {"limit": limit, "offset": offset}
             resp = requests.get(
-                "https://api.spotify.com/v1/me/tracks", headers=headers, params=params
-            ).json()
+                "https://api.spotify.com/v1/me/tracks",
+                headers=headers,
+                params=params).json()
             offset += limit
             for song in resp["items"]:
                 songs.append({'id': song["track"]["id"],
@@ -451,10 +482,17 @@ class zspotify_api:
         """ Retrieves metadata for downloaded songs """
 
         try:
-            info = json.loads(requests.get("https://api.spotify.com/v1/artists/" + artist_id,
-                                           headers={"Authorization": f"Bearer {self.token}"}).text)
+            info = json.loads(
+                requests.get(
+                    "https://api.spotify.com/v1/artists/" +
+                    artist_id,
+                    headers={
+                        "Authorization": f"Bearer {self.token}"}).text)
 
-            return {"name": self.sanitize_data(info["name"]), "genres": self.conv_artist_format(info["genres"])}
+            return {
+                "name": self.sanitize_data(
+                    info["name"]), "genres": self.conv_artist_format(
+                    info["genres"])}
         except Exception as e:
             print("###   get_artist_info - FAILED TO QUERY METADATA   ###")
             print(e)
@@ -548,7 +586,7 @@ class zspotify_api:
                     _track_id, VorbisOnlyAudioQuality(self.quality), False, None
                 )
             except Exception as e:
-                if type(e) == ApiClient.StatusCodeException:
+                if isinstance(e, ApiClient.StatusCodeException):
                     _track_id = EpisodeId.from_base62(track_id)
                     stream = self.session.content_feeder().load(
                         _track_id, VorbisOnlyAudioQuality(self.quality), False, None
@@ -582,12 +620,14 @@ class zspotify_api:
                     break
 
             self.progress = False
-            audio = AudioSegment.from_file(io.BytesIO(b"".join(segments)), format="ogg")
+            audio = AudioSegment.from_file(
+                io.BytesIO(b"".join(segments)), format="ogg")
             _dirs_path = output_path.parent
             if make_dirs:
                 _dirs_path.mkdir(exist_ok=True)
             elif not _dirs_path.exists():
-                raise FileNotFoundError(f"Directory {str(_dirs_path)} does not exist")
+                raise FileNotFoundError(
+                    f"Directory {str(_dirs_path)} does not exist")
 
             if not self.raw_audio_as_is:
                 self.convert_audio_format(audio, output_path)
@@ -621,15 +661,14 @@ class zspotify_api:
                     explicit = "[E]"
                 else:
                     explicit = ""
-                ret_tracks.append({'id': track['id'],
-                                   'name': explicit + track["name"],
-                                   "artists": ','.join([artist['name'] for artist in track['artists']])})
+                ret_tracks.append({'id': track['id'], 'name': explicit + track["name"],
+                                  "artists": ','.join([artist['name'] for artist in track['artists']])})
         ret_albums = []
         albums = resp.json()["albums"]["items"]
         if len(albums) > 0:
             for album in albums:
                 # print("==>",album,"\n")
-                _year = re.search("(\d{4})", album["release_date"]).group(1)
+                _year = re.search("(\\d{4})", album["release_date"]).group(1)
                 ret_albums.append({'name': album['name'],
                                    'year': _year,
                                    'artists': ','.join([artist['name'] for artist in album['artists']]),
@@ -653,7 +692,8 @@ class zspotify_api:
 
         # TODO: Add search in episodes and shows
 
-        if len(ret_tracks) + len(ret_albums) + len(ret_playlists) + len(ret_artists) == 0:
+        if len(ret_tracks) + len(ret_albums) + \
+                len(ret_playlists) + len(ret_artists) == 0:
             return None
         else:
             return {'tracks': ret_tracks,
