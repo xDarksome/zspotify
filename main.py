@@ -3,6 +3,7 @@ from zspotify import zspotify_api
 from appdirs import user_config_dir
 from getpass import getpass
 from mutagen import id3
+from pathlib import Path
 from threading import Thread
 from tqdm import tqdm
 
@@ -32,7 +33,7 @@ class archive:
         self.data = self.load()
 
     def load(self):
-        if os.path.exists(self.file):
+        if self.file.exists():
             with open(self.file, "r") as f:
                 try:
                     return json.load(f)
@@ -52,7 +53,7 @@ class archive:
         self.data[track_id] = {"artist": artist,
                                "track_name": track_name,
                                "audio_type": audio_type,
-                               "fullpath": fullpath,
+                               "fullpath": str(fullpath),
                                "timestamp": timestamp
                                }
         print("Added to archive: {} - {}".format(artist, track_name))
@@ -73,9 +74,9 @@ class archive:
         return self.data
 
     def get_ids_from_old_archive(self, old_archive_file):
-        archive =[]
-        folder = os.path.dirname(old_archive_file)
-        if os.path.exists(old_archive_file):
+        archive = []
+        folder = old_archive_file.parent
+        if old_archive_file.exists():
             with open(old_archive_file, "r", encoding="utf-8") as f:
                 for line in f.readlines():
                     song = line.split("\t")
@@ -85,8 +86,8 @@ class archive:
                         artist = song[2]
                         track_name = song[3]
                         fullpath = None
-                        if os.path.exists(os.path.join(folder, song[4])):
-                            fullpath = os.path.join(folder, song[4])
+                        if Path(folder, song[4]).exists():
+                            fullpath = str(Path(folder, song[4]))
 
                         archive.append({"track_id": track_id,
                                         "track_artist": artist,
@@ -101,7 +102,7 @@ class archive:
 
     def delete_not_existing(self):
         for track_id in self.data:
-            if not os.path.exists(self.data[track_id]["fullpath"]):
+            if not self.data[track_id]["fullpath"].exists():
                 self.remove(track_id)
         self.save()
 
@@ -123,23 +124,23 @@ class zspotify:
             limit=self.args.limit)
 
         self.config_dir = self.args.config_dir
-        self.download_dir = os.path.expanduser("~/Music/")
+        self.download_dir = Path.home() / "Music"
         if self.args.download_dir:
-            self.download_dir = os.path.expanduser(self.args.download_dir)
+            self.download_dir = Path.home() / self.args.download_dir
 
-        self.music_dir = os.path.join(self.download_dir, "ZSpotify Music")
-        self.episodes_dir = os.path.join(self.download_dir, "ZSpotify Podcasts")
+        self.music_dir = Path(self.download_dir, "ZSpotify Music")
+        self.episodes_dir = Path(self.download_dir, "ZSpotify Podcasts")
 
         if self.args.music_dir:
-            self.music_dir = os.path.expanduser(self.args.music_dir)
+            self.music_dir = Path.home() / self.args.music_dir
         if self.args.episodes_dir:
-            self.episodes_dir = os.path.expanduser(self.args.episodes_dir)
+            self.episodes_dir = Path.home() / self.args.episodes_dir
 
         self.album_in_filename = self.args.album_in_filename
         self.antiban_album_time = self.args.antiban_album
         self.not_skip_existing = self.args.not_skip_existing
         self.skip_downloaded = self.args.skip_downloaded
-        self.archive_file = os.path.join(self.args.config_dir, self.args.archive)
+        self.archive_file = Path(self.args.config_dir, self.args.archive)
         self.archive = archive(self.archive_file)
 
     def parse_args(self):
@@ -209,7 +210,7 @@ class zspotify:
                             action="store_true", default=False)
         parser.add_argument("-cf", "--credentials-file",
                             help="File to save the credentials",
-                            default=os.path.join(user_config_dir("ZSpotify"), "credentials.json"))
+                            default=Path(user_config_dir("ZSpotify"), "credentials.json"))
         parser.add_argument("-bd", "--bulk-download",
                             help="Bulk download from file with urls")
 
@@ -337,7 +338,7 @@ class zspotify:
     def archive_migration(self):
         """Migrates the old archive to the new one"""
         for path in [self.config_dir, self.download_dir, self.music_dir, self.episodes_dir]:
-            tracks = self.archive.get_ids_from_old_archive(os.path.join(path, ".song_archive"))
+            tracks = self.archive.get_ids_from_old_archive(Path(path, ".song_archive"))
             if tracks:
                 print("Found old archive, migrating to new one...")
                 for track in tracks:
@@ -345,18 +346,18 @@ class zspotify:
                         print(f"Skipping {track['track_name']} - Already in archive")
                         continue
                     self.archive.add(track['track_id'],
-                                     artist=track['track_artist'],
-                                     track_name=track['track_name'],
-                                     fullpath=track['fullpath'],
-                                     timestamp=track['timestamp'],
-                                     audio_type="music",
-                                     save=False)
+                                     artist = track['track_artist'],
+                                     track_name = track['track_name'],
+                                     fullpath = track['fullpath'],
+                                     timestamp = track['timestamp'],
+                                     audio_type = "music",
+                                     save = False)
                 self.archive.save()
             try:
-                os.remove(os.path.join(path, ".song_archive"))
+                os.remove(Path(path, ".song_archive"))
             except OSError:
                 pass
-            print(f"Migration complete from file: {os.path.join(path, '.song_archive')}")
+            print(f"Migration complete from file: {str(Path(path, '.song_archive'))}")
 
     # DOWNLOADERS
     def download_track(self, track_id, path=None, caller=None):
@@ -373,27 +374,27 @@ class zspotify:
             filename = self.sanitize_data(f"{track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
             if self.album_in_filename:
                 filename = self.sanitize_data(f"{track['album']} {track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
-            fullpath = os.path.join(basepath, filename)
+            fullpath = Path(basepath, filename)
         elif caller == "playlist":
             basepath = path or self.music_dir
-            filename = self.sanitize_data(f"{track['artist_name']} - {track['audio_name']}.{self.args.audio_format}")
+            filename = Path(f"{track['artist_name']} - {track['audio_name']}.{self.args.audio_format}")
             if self.album_in_filename:
                 filename = self.sanitize_data(f"{track['artist_name']} - {track['album']} - {track['audio_name']}.{self.args.audio_format}")
-            fullpath = os.path.join(basepath, filename)
+            fullpath = Path(basepath, filename)
         elif caller == "show":
             basepath = path or self.episodes_dir
             filename = self.sanitize_data(f"{track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
-            fullpath = os.path.join(basepath, filename)
+            fullpath = Path(basepath, filename)
         elif caller == "episode":
             basepath = path or self.episodes_dir
             filename = self.sanitize_data(f"{track['artist_name']} - {track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
-            fullpath = os.path.join(basepath, filename)
+            fullpath = Path(basepath, filename)
         else:
             basepath = path or self.music_dir
             filename = self.sanitize_data(f"{track['artist_name']} - {track['audio_name']}.{self.args.audio_format}")
-            fullpath = os.path.join(basepath, filename)
+            fullpath = Path(basepath, filename)
 
-        if self.not_skip_existing and os.path.exists(fullpath):
+        if self.not_skip_existing and fullpath.exists():
             print(f"Skipping {filename} - Already downloaded")
             return True
         downloader = Thread(target=self.zs_api.download_audio, args=(track_id, fullpath, True))
@@ -442,7 +443,7 @@ class zspotify:
             print("Playlist is empty")
             return False
         print(f"Downloading {playlist['name']} playlist")
-        basepath = os.path.join(self.music_dir, self.sanitize_data(playlist['name']))
+        basepath = Path(self.music_dir, self.sanitize_data(playlist['name']))
         for song in songs:
             self.download_track(song['id'], basepath, "playlist")
         print(f"Finished downloading {playlist['name']} playlist")
@@ -510,7 +511,7 @@ class zspotify:
             print("Album is empty")
             return False
         print(f"Downloading {album['artists']} - {album['name']} album")
-        basepath = os.path.join(self.music_dir, self.sanitize_data(album['artists']),
+        basepath = Path(self.music_dir, self.sanitize_data(album['artists']),
                                 self.sanitize_data(f"{album['release_date']} - {album['name']}"))
         for song in songs:
             self.download_track(song['id'], basepath, "album")
@@ -538,7 +539,7 @@ class zspotify:
             print("No liked songs found")
             return False
         print("Downloading liked songs")
-        basepath = os.path.join(self.music_dir, "Liked Songs")
+        basepath = Path(self.music_dir, "Liked Songs")
         for song in songs:
             self.download_track(song['id'], basepath, "liked_songs")
         print("Finished downloading liked songs")
@@ -581,12 +582,12 @@ class zspotify:
         filename = self.sanitize_data(f"{episode['show_name']} - {episode['audio_name']}.{self.args.audio_format}")
 
         if caller == "show":
-            basepath = os.path.join(self.episodes_dir, self.sanitize_data(episode['show_name']))
+            basepath = Path(self.episodes_dir, self.sanitize_data(episode['show_name']))
             filename = self.sanitize_data(f"{episode['audio_name']}.{self.args.audio_format}")
 
-        fullpath = os.path.join(basepath, filename)
+        fullpath = Path(basepath, filename)
 
-        if self.not_skip_existing and os.path.exists(fullpath):
+        if self.not_skip_existing and fullpath.exists():
             print(f"Skipping {filename} - Already downloaded")
             return True
 

@@ -1,6 +1,5 @@
 import json
 import os
-import os.path
 from pathlib import Path
 import re
 import io
@@ -43,7 +42,7 @@ class zspotify_api:
         self.override_auto_wait = override_auto_wait
         self.chunk_size = chunk_size
         if credentials == '' or credentials == None:
-            self.credentials = os.path.join(self.config_dir, "credentials.json")
+            self.credentials = Path(self.config_dir, "credentials.json")
         else:
             self.credentials = credentials
         self.limit = limit
@@ -72,7 +71,7 @@ class zspotify_api:
 
         Path(self.credentials).parent.mkdir(parents=True, exist_ok=True)
 
-        if os.path.isfile(self.credentials):
+        if self.credentials.is_file():
             try:
                 self.session = Session.Builder().stored_file(stored_credentials=self.credentials).create()
                 self.token = self.session.tokens().get("user-read-email")
@@ -90,7 +89,7 @@ class zspotify_api:
                 self.token = self.session.tokens().get("user-read-email")
                 self.token_for_saved = self.session.tokens().get("user-library-read")
                 self.check_premium()
-                os.makedirs(self.config_dir, exist_ok=True)
+                self.config_dir.mkdir(exist_ok=True)
                 shutil.copyfile("credentials.json", self.credentials)
                 return True
             except RuntimeError:
@@ -517,9 +516,6 @@ class zspotify_api:
         """Downloads raw song audio from Spotify"""
         # TODO: ADD disc_number IF > 1
         try:
-            if not os.path.isabs(output_path):
-                output_path = os.path.abspath(output_path)
-
             # print("###   FOUND SONG:", song_name, "   ###")
             try:
                 _track_id = TrackId.from_base62(track_id)
@@ -560,11 +556,11 @@ class zspotify_api:
 
             self.progress = False
             audio = AudioSegment.from_file(io.BytesIO(b"".join(segments)), format="ogg")
-            _dirs_path = os.path.dirname(output_path)
+            _dirs_path = output_path.parent
             if make_dirs:
-                os.makedirs(_dirs_path, exist_ok=True)
-            elif not os.path.exists(_dirs_path):
-                raise FileNotFoundError(f"Directory {_dirs_path} does not exist")
+                _dirs_path.mkdir(exist_ok=True)
+            elif not _dirs_path.exists():
+                raise FileNotFoundError(f"Directory {str(_dirs_path)} does not exist")
 
             if not self.raw_audio_as_is:
                 self.convert_audio_format(audio, output_path)
