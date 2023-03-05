@@ -620,8 +620,7 @@ class zspotify_api:
                     break
 
             self.progress = False
-            audio = AudioSegment.from_file(
-                io.BytesIO(b"".join(segments)), format="ogg")
+            audio = AudioSegment.from_file(io.BytesIO(b"".join(segments)))
             _dirs_path = output_path.parent
             if make_dirs:
                 _dirs_path.mkdir(exist_ok=True)
