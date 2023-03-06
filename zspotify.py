@@ -623,7 +623,7 @@ class zspotify_api:
             audio = AudioSegment.from_file(io.BytesIO(b"".join(segments)))
             _dirs_path = output_path.parent
             if make_dirs:
-                _dirs_path.mkdir(exist_ok=True)
+                _dirs_path.mkdir(parents=True, exist_ok=True)
             elif not _dirs_path.exists():
                 raise FileNotFoundError(
                     f"Directory {str(_dirs_path)} does not exist")
