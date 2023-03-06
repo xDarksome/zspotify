@@ -297,6 +297,10 @@ class zspotify:
             value = value.replace(i, "")
         return value.replace("|", "-")
 
+    def zfill(self, value, len: int = 2):
+        """Returns fill the strings with zeros"""
+        return str(value).zfill(len)
+
     def login(self):
         """Login to Spotify"""
         logged_in = self.zs_api.login()
@@ -569,12 +573,21 @@ class zspotify:
         if not songs:
             print("Album is empty")
             return False
+        disc_number_flag = False
+        for song in songs:
+            if song["disc_number"] > 1:
+                disc_number_flag = True
         print(f"Downloading {album['artists']} - {album['name']} album")
         basepath = Path(
             self.music_dir,
             self.sanitize_data(album['artists']),
             self.sanitize_data(f"{album['release_date']} - {album['name']}"))
         for song in songs:
+            if disc_number_flag:
+                basepath = os.path.join(self.music_dir, 
+                                        self.sanitize_data(album['artists']),
+                                        self.sanitize_data(f"{album['release_date']} - {album['name']}"),
+                                        self.sanitize_data(f"{self.zfill(song['disc_number'])}"))
             self.download_track(song['id'], basepath, "album")
         print(
             f"Finished downloading {album['artists']} - {album['name']} album")
