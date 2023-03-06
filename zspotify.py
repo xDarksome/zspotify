@@ -104,7 +104,9 @@ class zspotify_api:
             if self.session.get_user_attribute(
                     "type") == "premium" or self.force_premium:
                 self.quality = AudioQuality.VERY_HIGH
+                print("username:",json.load(open(self.credentials))['username'],"[ DETECTED PREMIUM ACCOUNT - USING VERY_HIGH QUALITY ]\n")
             else:
+                print("username:",json.load(open(self.credentials))['username'],"[ DETECTED FREE ACCOUNT - USING HIGH QUALITY ]\n")
                 self.quality = AudioQuality.HIGH
         else:
             except_msg = "You must login first"
@@ -380,7 +382,8 @@ class zspotify_api:
             for song in resp["items"]:
                 audios.append({"id": song["id"],
                                "name": song["name"],
-                               "number": song["track_number"]})
+                               "number": song["track_number"],
+                               "disc_number": song["disc_number"]})
                 # audios.append(song["id"])
 
             if len(resp["items"]) < limit:
