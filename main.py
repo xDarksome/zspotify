@@ -1,8 +1,10 @@
 from zspotify import zspotify_api
 
 from appdirs import user_config_dir
+from base64 import b64encode
 from getpass import getpass
 from mutagen import id3
+from mutagen.oggvorbis import OggVorbis
 from pathlib import Path
 from threading import Thread
 from tqdm import tqdm
@@ -10,6 +12,7 @@ from tqdm import tqdm
 import argparse
 import datetime
 import json
+import music_tag
 import os
 import platform
 import requests
@@ -322,64 +325,112 @@ class zspotify:
                        track_id_str=None,
                        album_artist=None,
                        image_url=None):
-        """sets music_tag metadata using mutagen"""
+        """sets music_tag metadata using mutagen if possible"""
         artist = artists
 
         if artist is not None and album_artist is None:
             album_artist = artist
+        
+        # Check file format
+        extension = str(filename).split('.')[-1]
 
-        tags = id3.ID3(filename)
-        if artist is not None:
-            # TPE1 Lead Artist/Performer/Soloist/Group
-            tags["TPE1"] = id3.TPE1(
-                encoding=3, text=artist
-            )
-        if name is not None:
-            # TIT2 Title/songname/content description
-            tags["TIT2"] = id3.TIT2(
-                encoding=3, text=name
-            )
-        if album_name is not None:
-            # TALB Album/Movie/Show title
-            tags["TALB"] = id3.TALB(encoding=3, text=album_name)
-        if release_year is not None:
-            # TDRC Recording time
-            tags["TDRC"] = id3.TDRC(encoding=3, text=release_year)
-            # TDOR Original release time
-            tags["TDOR"] = id3.TDOR(encoding=3, text=release_year)
-        if disc_number is not None:
-            # TPOS Part of a set
-            tags["TPOS"] = id3.TPOS(encoding=3, text=str(disc_number))
-        if track_number is not None:
-            # TRCK Track number/Position in set
-            tags["TRCK"] = id3.TRCK(
-                encoding=3, text=str(track_number)
-            )
-        if track_id_str is not None:
-            # COMM User comment
-            tags["COMM"] = id3.COMM(
-                encoding=3,
-                lang="eng",
-                text="https://open.spotify.com/track/" +
-                track_id_str)
-        if album_artist is not None:
-            # TPE2 Band/orchestra/accompaniment
-            tags["TPE2"] = id3.TPE2(
-                encoding=3, text=album_artist
-            )
-        if image_url is not None:
-            albumart = requests.get(image_url).content if image_url else None
-            if albumart:
-                # APIC Attached (or linked) Picture.
-                tags["APIC"] = id3.APIC(
-                    encoding=3,
-                    mime="image/jpeg",
-                    type=3,
-                    desc="0",
-                    data=albumart,
+        # mp3 uses id3
+        if extension == 'mp3':
+            tags = id3.ID3(filename)
+            if artist is not None:
+                # TPE1 Lead Artist/Performer/Soloist/Group
+                tags["TPE1"] = id3.TPE1(
+                    encoding=3, text=artist
                 )
-        # TCON Genre - TODO
-        tags.save()
+            if name is not None:
+                # TIT2 Title/songname/content description
+                tags["TIT2"] = id3.TIT2(
+                    encoding=3, text=name
+                )
+            if album_name is not None:
+                # TALB Album/Movie/Show title
+                tags["TALB"] = id3.TALB(encoding=3, text=album_name)
+            if release_year is not None:
+                # TDRC Recording time
+                tags["TDRC"] = id3.TDRC(encoding=3, text=release_year)
+                # TDOR Original release time
+                tags["TDOR"] = id3.TDOR(encoding=3, text=release_year)
+            if disc_number is not None:
+                # TPOS Part of a set
+                tags["TPOS"] = id3.TPOS(encoding=3, text=str(disc_number))
+            if track_number is not None:
+                # TRCK Track number/Position in set
+                tags["TRCK"] = id3.TRCK(
+                    encoding=3, text=str(track_number)
+                )
+            if track_id_str is not None:
+                # COMM User comment
+                tags["COMM"] = id3.COMM(
+                    encoding=3,
+                    lang="eng",
+                    text="https://open.spotify.com/track/" +
+                    track_id_str)
+            if album_artist is not None:
+                # TPE2 Band/orchestra/accompaniment
+                tags["TPE2"] = id3.TPE2(
+                    encoding=3, text=album_artist
+                )
+            if image_url is not None:
+                albumart = requests.get(image_url).content if image_url else None
+                if albumart:
+                    # APIC Attached (or linked) Picture.
+                    tags["APIC"] = id3.APIC(
+                        encoding=3,
+                        mime="image/jpeg",
+                        type=3,
+                        desc="0",
+                        data=albumart,
+                    )
+            # TCON Genre - TODO
+            tags.save()
+        elif extension == 'ogg':
+            tags = OggVorbis(filename)
+            if artist is not None:
+                tags["ARTIST"] = artist
+            if name is not None:
+                tags["TITLE"] = name
+            if album_name is not None:
+                tags["ALBUM"] = album_name
+            if release_year is not None:
+                tags["DATE"] = release_year
+            if disc_number is not None:
+                tags["DISCNUMBER"] = str(disc_number)
+            if track_number is not None:
+                tags["TRACKNUMBER"] = str(track_number)
+            if track_id_str is not None:
+                tags["DESCRIPTION"] = "https://open.spotify.com/track/" + track_id_str
+            if image_url is not None:
+                albumart = requests.get(image_url).content if image_url else None
+                if albumart:
+                    tags["METADATA_BLOCK_PICTURE"] = b64encode(albumart).decode("ascii")
+            tags.save()
+        # Use music_tag for other file formats
+        else:
+            tags = music_tag.load_file(filename)
+            if artist is not None:
+                tags["artist"] = artist
+            if name is not None:
+                tags["tracktitle"] = name
+            if album_name is not None:
+                tags["album"] = album_name
+            if release_year is not None:
+                tags["year"] = release_year
+            if disc_number is not None:
+                tags["discnumber"] = str(disc_number)
+            if track_number is not None:
+                tags["tracknumber"] = track_number
+            if track_id_str is not None:
+                tags["comment"] = "https://open.spotify.com/track/" + track_id_str
+            if image_url is not None:
+                albumart = requests.get(image_url).content if image_url else None
+                if albumart:
+                    tags["artwork"] = albumart
+            tags.save()
 
     # ARCHIVE
     def archive_migration(self):
