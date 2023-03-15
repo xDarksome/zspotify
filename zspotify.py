@@ -1,11 +1,12 @@
 from appdirs import user_config_dir
+from io import BytesIO
 from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
 from librespot.core import ApiClient, Session
 from librespot.metadata import TrackId, EpisodeId
 from pathlib import Path
 from pydub import AudioSegment
+from pydub.utils import mediainfo
 
-import io
 import json
 import os
 import re
@@ -21,7 +22,6 @@ class zspotify_api:
                  config_dir=user_config_dir("ZSpotify"),
                  music_format="mp3",
                  force_premium=False,
-                 raw_audio_as_is=False,
                  anti_ban_wait_time=5,
                  override_auto_wait=False,
                  chunk_size=50000,
@@ -35,7 +35,6 @@ class zspotify_api:
         self.config_dir = config_dir
         self.music_format = music_format
         self.force_premium = force_premium
-        self.raw_audio_as_is = raw_audio_as_is
         self.anti_ban_wait_time = anti_ban_wait_time
         self.override_auto_wait = override_auto_wait
         self.chunk_size = chunk_size
@@ -58,10 +57,6 @@ class zspotify_api:
         for i in self.sanitize:
             value = value.replace(i, "")
         return value.replace("|", "-")
-
-    def check_raw(self):
-        if self.raw_audio_as_is:
-            self.music_format = "wav"
 
     def login(self, username=None, password=None):
         """Authenticates with Spotify and saves credentials to a file"""
@@ -222,14 +217,15 @@ class zspotify_api:
 
     # Functions directly related to modifying the downloaded audio and its
     # metadata
-    def convert_audio_format(self, segments: AudioSegment, to_file):
-        """Converts raw audio into playable mp3 or ogg vorbis"""
-        # print("###   CONVERTING TO " + MUSIC_FORMAT.upper() + "   ###")
+    def convert_audio_format(self, audio_bytes: BytesIO, output_path):
+        """Converts raw audio (ogg vorbis) to user specified format"""
+        audio_segment = AudioSegment.from_file(audio_bytes)
+
+        bitrate = "160k"
         if self.quality == AudioQuality.VERY_HIGH:
             bitrate = "320k"
-        else:
-            bitrate = "160k"
-        segments.export(to_file, format=self.music_format, bitrate=bitrate)
+
+        audio_segment.export(output_path, format=self.music_format, bitrate=bitrate)
 
     # INFO
     def get_audio_info(self, track_id, get_genres=False):
@@ -623,7 +619,8 @@ class zspotify_api:
                     break
 
             self.progress = False
-            audio = AudioSegment.from_file(io.BytesIO(b"".join(segments)))
+
+            # Create output directories
             _dirs_path = output_path.parent
             if make_dirs:
                 _dirs_path.mkdir(parents=True, exist_ok=True)
@@ -631,8 +628,10 @@ class zspotify_api:
                 raise FileNotFoundError(
                     f"Directory {str(_dirs_path)} does not exist")
 
-            if not self.raw_audio_as_is:
-                self.convert_audio_format(audio, output_path)
+            # Save raw audio as BytesIO object and convert from there
+            audio_bytes = BytesIO(b"".join(segments))
+            self.convert_audio_format(audio_bytes, output_path)
+
             if not self.override_auto_wait:
                 time.sleep(self.anti_ban_wait_time)
             return True
