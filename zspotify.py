@@ -1,703 +1,923 @@
-from appdirs import user_config_dir
-from io import BytesIO
-from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
-from librespot.core import ApiClient, Session
-from librespot.metadata import TrackId, EpisodeId
-from pathlib import Path
-from pydub import AudioSegment
-from pydub.utils import mediainfo
+from zspotify_lib import zspotify_api
 
+from appdirs import user_config_dir
+from base64 import b64encode
+from getpass import getpass
+from mutagen import id3
+from mutagen.oggvorbis import OggVorbis
+from pathlib import Path
+from threading import Thread
+from tqdm import tqdm
+
+import argparse
+import datetime
 import json
+import music_tag
 import os
-import re
+import platform
 import requests
-import shutil
+import sys
 import time
 
 
-class zspotify_api:
+__version__ = "2.0.0_alpha"
+__author__ = [{"name": "Jonathan Salinas Vargas",
+               "github": "https://github.com/jsavargas"},
+              {"name": "Yuriy Kovrigin",
+               "github": "https://github.com/Bionded"}]
 
-    def __init__(self,
-                 sanitize=["\\", "/", ":", "*", "?", "'", "<", ">", '"'],
-                 config_dir=user_config_dir("ZSpotify"),
-                 music_format="mp3",
-                 force_premium=False,
-                 anti_ban_wait_time=5,
-                 override_auto_wait=False,
-                 chunk_size=50000,
-                 credentials='',
-                 limit=20,
-                 reintent_download=30,
-                 default_retries=10
-                 ):
-        self._version = "1.10.0"
-        self.sanitize = sanitize
-        self.config_dir = config_dir
-        self.music_format = music_format
-        self.force_premium = force_premium
-        self.anti_ban_wait_time = anti_ban_wait_time
-        self.override_auto_wait = override_auto_wait
-        self.chunk_size = chunk_size
-        if credentials == '' or credentials is None:
-            self.credentials = Path(self.config_dir, "credentials.json")
+_ANTI_BAN_WAIT_TIME = os.environ.get('ANTI_BAN_WAIT_TIME', 5)
+_ANTI_BAN_WAIT_TIME_ALBUMS = os.environ.get('ANTI_BAN_WAIT_TIME_ALBUMS', 30)
+_LIMIT_RESULTS = os.environ.get('LIMIT_RESULTS', 10)
+
+
+class archive:
+
+    def __init__(self, file):
+        self.file = file
+        self.data = self.load()
+
+    def load(self):
+        if self.file.exists():
+            with open(self.file, "r") as f:
+                try:
+                    return json.load(f)
+                except Exception as e:
+                    print("Error loading archive: {}".format(e))
+                    return {}
+        return {}
+
+    def save(self):
+        with open(self.file, "w") as f:
+            json.dump(self.data, f, indent=4)
+
+    def add(self, track_id, artist=None, track_name=None, fullpath=None,
+            audio_type=None, timestamp=None, save=True):
+        if not timestamp:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.data[track_id] = {"artist": artist,
+                               "track_name": track_name,
+                               "audio_type": audio_type,
+                               "fullpath": str(fullpath),
+                               "timestamp": timestamp
+                               }
+        print("Added to archive: {} - {}".format(artist, track_name))
+        if save:
+            self.save()
+
+    def get(self, track_id):
+        return self.data.get(track_id)
+
+    def remove(self, track_id):
+        self.data.pop(track_id)
+        self.save()
+
+    def exists(self, track_id):
+        return track_id in self.data
+
+    def get_all(self):
+        return self.data
+
+    def get_ids_from_old_archive(self, old_archive_file):
+        archive = []
+        folder = old_archive_file.parent
+        if old_archive_file.exists():
+            with open(old_archive_file, "r", encoding="utf-8") as f:
+                for line in f.readlines():
+                    song = line.split("\t")
+                    try:
+                        track_id = song[0]
+                        timestamp = song[1]
+                        artist = song[2]
+                        track_name = song[3]
+                        fullpath = None
+                        if Path(folder, song[4]).exists():
+                            fullpath = str(Path(folder, song[4]))
+
+                        archive.append({"track_id": track_id,
+                                        "track_artist": artist,
+                                        "track_name": track_name,
+                                        "timestamp": timestamp,
+                                        "fullpath": fullpath})
+                    except Exception as e:
+                        print("Error parsing line: {}".format(line))
+                        print(e)
+            return archive
+        return None
+
+    def delete_not_existing(self):
+        for track_id in self.data:
+            if not self.data[track_id]["fullpath"].exists():
+                self.remove(track_id)
+        self.save()
+
+
+# UTILS
+class zspotify:
+
+    def __init__(self):
+        self.SANITIZE_CHARS = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
+        self.SEPARATORS = [",", ";"]
+        self.args = self.parse_args()
+        self.zs_api = zspotify_api(
+            sanitize=self.SANITIZE_CHARS,
+            config_dir=self.args.config_dir,
+            music_format=self.args.audio_format,
+            force_premium=self.args.force_premium,
+            anti_ban_wait_time=self.args.antiban_time,
+            credentials=self.args.credentials_file,
+            limit=self.args.limit)
+
+        self.config_dir = self.args.config_dir
+        self.download_dir = Path.home() / "Music"
+        if self.args.download_dir:
+            self.download_dir = Path.home() / self.args.download_dir
+
+        self.music_dir = Path(self.download_dir, "ZSpotify Music")
+        self.episodes_dir = Path(self.download_dir, "ZSpotify Podcasts")
+
+        if self.args.music_dir:
+            self.music_dir = Path.home() / self.args.music_dir
+        if self.args.episodes_dir:
+            self.episodes_dir = Path.home() / self.args.episodes_dir
+
+        self.album_in_filename = self.args.album_in_filename
+        self.antiban_album_time = self.args.antiban_album
+        self.not_skip_existing = self.args.not_skip_existing
+        self.skip_downloaded = self.args.skip_downloaded
+        self.archive_file = Path(self.args.config_dir, self.args.archive)
+        self.archive = archive(self.archive_file)
+
+    def parse_args(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "search",
+            help="Searches for a track, album, artist or playlist or download by url",
+            const=None,
+            nargs="?")
+        parser.add_argument(
+            "-ap",
+            "--all-playlists",
+            help="Downloads all saved playlist from your library",
+            action="store_true")
+        parser.add_argument(
+            "-sp",
+            "--select-playlists",
+            help="Downloads a saved playlist from your library",
+            action="store_true")
+        parser.add_argument(
+            "-ls", "--liked-songs",
+            help="Downloads your liked songs",
+            action="store_true")
+        parser.add_argument(
+            "-pl", "--playlist",
+            help="Download playlist by id or url")
+        parser.add_argument(
+            "-tr", "--track",
+            help="Downloads a track from their id or url")
+        parser.add_argument(
+            "-al", "--album",
+            help="Downloads an album from their id or url")
+        parser.add_argument(
+            "-ar", "--artist",
+            help="Downloads an artist from their id or url")
+        parser.add_argument(
+            "-ep", "--episode",
+            help="Downloads a episode from their id or url")
+        parser.add_argument(
+            "-fs", "--full-show",
+            help="Downloads all show episodes from id or url")
+        parser.add_argument(
+            "-cd", "--config-dir",
+            help="Folder to save the config files",
+            default=user_config_dir("ZSpotify"))
+        parser.add_argument(
+            "--archive",
+            help="File to save the downloaded files",
+            default="archive.json")
+        parser.add_argument(
+            "-d", "--download-dir",
+            help="Folder to save the downloaded files")
+        parser.add_argument(
+            "-md", "--music-dir",
+            help="Folder to save the downloaded music files")
+        parser.add_argument(
+            "-pd",
+            "--episodes-dir",
+            help="Folder to save the downloaded episodes files")
+        parser.add_argument(
+            "-v", "--version",
+            help="Shows the current version of ZSpotify",
+            action="store_true")
+        parser.add_argument(
+            "-af", "--audio-format",
+            help="Audio format to download the tracks",
+            default="mp3", choices=["mp3", "ogg"])
+        parser.add_argument(
+            "--album-in-filename",
+            help="Adds the album name to the filename",
+            action="store_true", default=False)
+        parser.add_argument(
+            "--antiban-time",
+            help="Time to wait between downloads to avoid Ban",
+            default=_ANTI_BAN_WAIT_TIME, type=int)
+        parser.add_argument(
+            "--antiban-album",
+            help="Time to wait between album downloads to avoid Ban",
+            default=_ANTI_BAN_WAIT_TIME_ALBUMS,
+            type=int)
+        parser.add_argument(
+            "--limit",
+            help="limit",
+            default=_LIMIT_RESULTS, type=int)
+        parser.add_argument(
+            "-f", "--force-premium",
+            help="Force premium account",
+            action="store_true", default=False)
+        parser.add_argument(
+            "-ns",
+            "--not-skip-existing",
+            help="If flag setted NOT Skip existing already downloaded tracks",
+            action="store_false",
+            default=True)
+        parser.add_argument(
+            "-s",
+            "--skip-downloaded",
+            help="Skip already downloaded songs if exist in archive even it is dosn't exist in the filesystem",
+            action="store_true",
+            default=False)
+        parser.add_argument(
+            "-cf",
+            "--credentials-file",
+            help="File to save the credentials",
+            default=Path(
+                user_config_dir("ZSpotify"),
+                "credentials.json"))
+        parser.add_argument("-bd", "--bulk-download",
+                            help="Bulk download from file with urls")
+
+        return parser.parse_args()
+
+    def splash(self):
+        """Displays splash screen"""
+        print(
+            """
+    ███████ ███████ ██████   ██████  ████████ ██ ███████ ██    ██
+       ███  ██      ██   ██ ██    ██    ██    ██ ██       ██  ██
+      ███   ███████ ██████  ██    ██    ██    ██ █████     ████
+     ███         ██ ██      ██    ██    ██    ██ ██         ██
+    ███████ ███████ ██       ██████     ██    ██ ██         ██
+        """
+        )
+        print(f"version: {__version__}")
+
+    def split_input(self, selection):
+        """Splits the input into a list"""
+        # if one from separator in selections
+        for sep in self.SEPARATORS:
+            if sep in selection:
+                return selection.split(sep)
+        return [selection]
+
+    def clear(self):
+        """Clear the console window"""
+        if platform.system() == "Windows":
+            os.system("cls")
         else:
-            self.credentials = credentials
-        self.limit = limit
-        self.reintent_download = reintent_download
-        self.quality = AudioQuality.HIGH
-        requests.adapters.DEFAULT_RETRIES = default_retries
-        self.session = None
-        self.token = None
-        self.token_for_saved = None
-        self.progress = False
+            os.system("clear")
 
-    # UTILS
+    def antiban_wait(self, seconds: int = 5):
+        """ Pause between albums for a set number of seconds """
+        for i in range(seconds)[::-1]:
+            print(
+                "\rWait for Next Download in %d second(s)..." %
+                (i + 1), end="")
+            time.sleep(1)
+
     def sanitize_data(self, value):
         """Returns given string with problematic removed"""
-        for i in self.sanitize:
+        for i in self.SANITIZE_CHARS:
             value = value.replace(i, "")
         return value.replace("|", "-")
 
-    def login(self, username=None, password=None):
-        """Authenticates with Spotify and saves credentials to a file"""
-
-        Path(self.credentials).parent.mkdir(parents=True, exist_ok=True)
-
-        if self.credentials.is_file():
-            try:
-                self.session = Session.Builder().stored_file(
-                    stored_credentials=self.credentials).create()
-                self.token = self.session.tokens().get("user-read-email")
-                self.token_for_saved = self.session.tokens().get("user-library-read")
-                self.check_premium()
-                return True
-            except RuntimeError:
-                return False
-        elif username and password:
-            try:
-                Session.Builder().user_pass(
-                    username, password).stored_file(
-                    self.credentials).create()
-                shutil.copyfile("credentials.json", self.credentials)
-                os.remove("credentials.json")
-                self.session = Session.Builder().stored_file(
-                    stored_credentials=self.credentials).create()
-                self.token = self.session.tokens().get("user-read-email")
-                self.token_for_saved = self.session.tokens().get("user-library-read")
-                self.check_premium()
-                self.config_dir.mkdir(exist_ok=True)
-                shutil.copyfile("credentials.json", self.credentials)
-                return True
-            except RuntimeError:
-                return False
-        else:
-            return False
-
-    def check_premium(self):
-        """If user has spotify premium return true"""
-        if self.session is not None:
-            if self.session.get_user_attribute(
-                    "type") == "premium" or self.force_premium:
-                self.quality = AudioQuality.VERY_HIGH
-                print("username:",json.load(open(self.credentials))['username'],"[ DETECTED PREMIUM ACCOUNT - USING VERY_HIGH QUALITY ]\n")
-            else:
-                print("username:",json.load(open(self.credentials))['username'],"[ DETECTED FREE ACCOUNT - USING HIGH QUALITY ]\n")
-                self.quality = AudioQuality.HIGH
-        else:
-            except_msg = "You must login first"
-            raise RuntimeError(except_msg)
-
-    def parse_url(self, search_input):
-        track_uri_search = re.search(
-            r"^spotify:track:(?P<TrackID>[0-9a-zA-Z]{22})$", search_input
-        )
-        track_url_search = re.search(
-            r"^(https?://)?open\.spotify\.com/track/(?P<TrackID>[0-9a-zA-Z]{22})(\?si=.+?)?$",
-            search_input,
-        )
-
-        album_uri_search = re.search(
-            r"^spotify:album:(?P<AlbumID>[0-9a-zA-Z]{22})$", search_input
-        )
-        album_url_search = re.search(
-            r"^(https?://)?open\.spotify\.com/album/(?P<AlbumID>[0-9a-zA-Z]{22})(\?si=.+?)?$",
-            search_input,
-        )
-
-        playlist_uri_search = re.search(
-            r"^spotify:playlist:(?P<PlaylistID>[0-9a-zA-Z]{22})$", search_input
-        )
-        playlist_url_search = re.search(
-            r"^(https?://)?open\.spotify\.com/playlist/(?P<PlaylistID>[0-9a-zA-Z]{22})(\?si=.+?)?$",
-            search_input,
-        )
-
-        episode_uri_search = re.search(
-            r"^spotify:episode:(?P<EpisodeID>[0-9a-zA-Z]{22})$", search_input
-        )
-        episode_url_search = re.search(
-            r"^(https?://)?open\.spotify\.com/episode/(?P<EpisodeID>[0-9a-zA-Z]{22})(\?si=.+?)?$",
-            search_input,
-        )
-
-        show_uri_search = re.search(
-            r"^spotify:show:(?P<ShowID>[0-9a-zA-Z]{22})$", search_input
-        )
-        show_url_search = re.search(
-            r"^(https?://)?open\.spotify\.com/show/(?P<ShowID>[0-9a-zA-Z]{22})(\?si=.+?)?$",
-            search_input,
-        )
-
-        artist_uri_search = re.search(
-            r"^spotify:artist:(?P<ArtistID>[0-9a-zA-Z]{22})$", search_input
-        )
-        artist_url_search = re.search(
-            r"^(https?://)?open\.spotify\.com/artist/(?P<ArtistID>[0-9a-zA-Z]{22})(\?si=.+?)?$",
-            search_input,
-        )
-
-        if track_uri_search is not None or track_url_search is not None:
-            track_id_str = (
-                track_uri_search if track_uri_search is not None else track_url_search
-            ).group("TrackID")
-        else:
-            track_id_str = None
-
-        if album_uri_search is not None or album_url_search is not None:
-            album_id_str = (
-                album_uri_search if album_uri_search is not None else album_url_search
-            ).group("AlbumID")
-        else:
-            album_id_str = None
-
-        if playlist_uri_search is not None or playlist_url_search is not None:
-            playlist_id_str = (
-                playlist_uri_search
-                if playlist_uri_search is not None
-                else playlist_url_search
-            ).group("PlaylistID")
-        else:
-            playlist_id_str = None
-
-        if episode_uri_search is not None or episode_url_search is not None:
-            episode_id_str = (
-                episode_uri_search if episode_uri_search is not None else episode_url_search
-            ).group("EpisodeID")
-        else:
-            episode_id_str = None
-
-        if show_uri_search is not None or show_url_search is not None:
-            show_id_str = (
-                show_uri_search if show_uri_search is not None else show_url_search
-            ).group("ShowID")
-        else:
-            show_id_str = None
-
-        if artist_uri_search is not None or artist_url_search is not None:
-            artist_id_str = (
-                artist_uri_search if artist_uri_search is not None else artist_url_search
-            ).group("ArtistID")
-        else:
-            artist_id_str = None
-
-        return {'track': track_id_str, 'album': album_id_str,
-                'playlist': playlist_id_str, 'episode': episode_id_str,
-                'show': show_id_str, 'artist': artist_id_str}
-
-    def conv_artist_format(self, artists):
-        """Returns converted artist format"""
-        formatted = ""
-        for artist in artists:
-            formatted += artist + ", "
-        return formatted[:-2]
-
-    # TODO: TAGS
-
-    # CONVERTING
-
-    # Functions directly related to modifying the downloaded audio and its
-    # metadata
-    def convert_audio_format(self, audio_bytes: BytesIO, output_path):
-        """Converts raw audio (ogg vorbis) to user specified format"""
-        audio_segment = AudioSegment.from_file(audio_bytes)
-
-        bitrate = "160k"
-        if self.quality == AudioQuality.VERY_HIGH:
-            bitrate = "320k"
-
-        audio_segment.export(output_path, format=self.music_format, bitrate=bitrate)
-
-    # INFO
-    def get_audio_info(self, track_id, get_genres=False):
-        """Retrieves metadata for downloaded songs"""
-        try:
-
-            info = json.loads(
-                requests.get(
-                    "https://api.spotify.com/v1/tracks?ids="
-                    + track_id
-                    + "&market=from_token",
-                    headers={"Authorization": f"Bearer {self.token}"},
-                ).text
-            )
-
-            # Sum the size of the images, compares and saves the index of the
-            # largest image size
-            sum_total = []
-            for sum_px in info['tracks'][0]['album']['images']:
-                sum_total.append(sum_px['height'] + sum_px['width'])
-
-            img_index = sum_total.index(max(sum_total)) if sum_total else -1
-
-            artist_id = info['tracks'][0]['artists'][0]['id']
-            artists = []
-            for data in info["tracks"][0]["artists"]:
-                artists.append(self.sanitize_data(data["name"]))
-            artist_name = artists
-            album_name = self.sanitize_data(info["tracks"][0]["album"]["name"])
-            song_name = self.sanitize_data(info["tracks"][0]["name"])
-            image_url = info["tracks"][0]["album"]["images"][img_index]["url"] if img_index >= 0 else None
-            release_year = info["tracks"][0]["album"]["release_date"].split(
-                "-")[0]
-            disc_number = info["tracks"][0]["disc_number"]
-            track_number = info["tracks"][0]["track_number"]
-            scraped_song_id = info["tracks"][0]["id"]
-            is_playable = info["tracks"][0]["is_playable"]
-            release_date = info["tracks"][0]["album"]["release_date"]
-            if get_genres:
-                genres = 'Test_genre'
-                return {'id': track_id,
-                        'artist_id': artist_id,
-                        'artist_name': self.conv_artist_format(artist_name),
-                        'album_name': album_name,
-                        'audio_name': song_name,
-                        'image_url': image_url,
-                        'release_year': release_year,
-                        'disc_number': disc_number,
-                        'audio_number': track_number,
-                        'scraped_song_id': scraped_song_id,
-                        'is_playable': is_playable,
-                        'release_date': release_date,
-                        'genres': genres}
-
-            return {'id': track_id,
-                    'artist_id': artist_id,
-                    'artist_name': self.conv_artist_format(artist_name),
-                    'album_name': album_name,
-                    'audio_name': song_name,
-                    'image_url': image_url,
-                    'release_year': release_year,
-                    'disc_number': disc_number,
-                    'audio_number': track_number,
-                    'scraped_song_id': scraped_song_id,
-                    'is_playable': is_playable,
-                    'release_date': release_date}
-        except Exception as e:
-            print("###   get_song_info - FAILED TO QUERY METADATA   ###")
-            print(e)
-            print(track_id, info)
-            return None
-
-    def get_all_user_playlists(self):
-        """Returns list of users playlists"""
-        playlists = []
-        limit = 50
-        offset = 0
-
-        while True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-            params = {"limit": limit, "offset": offset}
-            resp = requests.get(
-                "https://api.spotify.com/v1/me/playlists",
-                headers=headers,
-                params=params).json()
-            offset += limit
-            playlists.extend(resp["items"])
-
-            if len(resp["items"]) < limit:
-                break
-
-        return {"playlists": playlists}
-
-    def get_playlist_songs(self, playlist_id):
-        """returns list of songs in a playlist"""
-        offset = 0
-        limit = 100
-        audios = []
-
-        while True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-            params = {"limit": limit, "offset": offset}
-            resp = requests.get(
-                f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
-                headers=headers,
-                params=params,
-            ).json()
-            offset += limit
-            for song in resp["items"]:
-                if song["track"] is not None:
-                    audios.append({"id": song["track"]["id"],
-                                   "name": song["track"]["name"],
-                                   "artist": song["track"]["artists"][0]["name"]})
-
-            if len(resp["items"]) < limit:
-                break
-        return audios
-
-    def get_playlist_info(self, playlist_id):
-        """Returns information scraped from playlist"""
-        headers = {"Authorization": f"Bearer {self.token}"}
-        resp = requests.get(
-            f"https://api.spotify.com/v1/playlists/{playlist_id}?fields=name,owner(display_name)&market=from_token",
-            headers=headers,
-        ).json()
-        return {
-            "name": resp["name"].strip(),
-            "owner": resp["owner"]["display_name"].strip(),
-            "id": playlist_id}
-
-    def get_album_songs(self, album_id):
-        """Returns album tracklist"""
-        audios = []
-        offset = 0
-        limit = 50
-        include_groups = "album,compilation"
-
-        while True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-            params = {
-                "limit": limit,
-                "include_groups": include_groups,
-                "offset": offset}
-            resp = requests.get(
-                f"https://api.spotify.com/v1/albums/{album_id}/tracks",
-                headers=headers,
-                params=params,
-            ).json()
-            offset += limit
-            for song in resp["items"]:
-                audios.append({"id": song["id"],
-                               "name": song["name"],
-                               "number": song["track_number"],
-                               "disc_number": song["disc_number"]})
-                # audios.append(song["id"])
-
-            if len(resp["items"]) < limit:
-                break
-
-        return audios
-
-    def get_album_info(self, album_id):
-        """Returns album name"""
-        headers = {"Authorization": f"Bearer {self.token}"}
-        resp = requests.get(
-            f"https://api.spotify.com/v1/albums/{album_id}", headers=headers
-        ).json()
-
-        artists = []
-        for artist in resp["artists"]:
-            artists.append(self.sanitize_data(artist["name"]))
-
-        if m := re.search("(\\d{4})", resp["release_date"]):
-            return {
-                "artists": self.conv_artist_format(artists),
-                "name": resp["name"],
-                "total_tracks": resp["total_tracks"],
-                "release_date": m.group(1)}
-        else:
-            return {
-                "artists": self.conv_artist_format(artists),
-                "name": resp["name"],
-                "total_tracks": resp["total_tracks"],
-                "release_date": resp["release_date"]}
-
-    # def get_artist_albums(self, artist_id):
-    #    """Returns artist's albums"""
-    #    headers = {"Authorization": f"Bearer {self.token}"}
-    #    resp = requests.get(
-    #        f"https://api.spotify.com/v1/artists/{artist_id}/albums", headers=headers
-    #    ).json()
-    #    # Return a list each album's id
-    #    return [resp["items"][i]["id"] for i in range(len(resp["items"]))]
-
-    def get_artist_albums(self, artists_id):
-        """returns list of albums in a artist"""
-
-        offset = 0
-        limit = 50
-        include_groups = "album,compilation"
-
-        headers = {"Authorization": f"Bearer {self.token}"}
-        params = {
-            "limit": limit,
-            "include_groups": include_groups,
-            "offset": offset}
-        albums = []
-        resp = requests.get(
-            f"https://api.spotify.com/v1/artists/{artists_id}/albums",
-            headers=headers,
-            params=params,
-        ).json()
-        # print("###   Album Name:", resp['items'], "###")
-        for album in resp["items"]:
-            if m := re.search("(\\d{4})", album["release_date"]):
-                albums.append({"id": album["id"],
-                               "name": album["name"],
-                               "release_date": m.group(1),
-                               "total_tracks": album["total_tracks"]})
-            else:
-                albums.append({"id": album["id"],
-                               "name": album["name"],
-                               "release_date": album["release_date"],
-                               "total_tracks": album["total_tracks"]})
-        return resp["items"]
-
-    def get_liked_tracks(self):
-        """Returns user's saved tracks"""
-        songs = []
-        offset = 0
-        limit = 50
-
-        while True:
-            headers = {"Authorization": f"Bearer {self.token_for_saved}"}
-            params = {"limit": limit, "offset": offset}
-            resp = requests.get(
-                "https://api.spotify.com/v1/me/tracks",
-                headers=headers,
-                params=params).json()
-            offset += limit
-            for song in resp["items"]:
-                songs.append({'id': song["track"]["id"],
-                              'name': song["track"]["name"],
-                              'artist': song["track"]["artists"][0]["name"]})
-            # songs.extend(resp["items"])
-
-            if len(resp["items"]) < limit:
-                break
-
-        return songs
-
-    def get_artist_info(self, artist_id):
-        """ Retrieves metadata for downloaded songs """
-
-        try:
-            info = json.loads(
-                requests.get(
-                    "https://api.spotify.com/v1/artists/" +
-                    artist_id,
-                    headers={
-                        "Authorization": f"Bearer {self.token}"}).text)
-
-            return {
-                "name": self.sanitize_data(
-                    info["name"]), "genres": self.conv_artist_format(
-                    info["genres"])}
-        except Exception as e:
-            print("###   get_artist_info - FAILED TO QUERY METADATA   ###")
-            print(e)
-            print(artist_id, info)
-
-    def get_episode_info(self, episode_id_str):
-        info = json.loads(
-            requests.get(
-                "https://api.spotify.com/v1/episodes/" + episode_id_str,
-                headers={"Authorization": f"Bearer {self.token}"},
-            ).text
-        )
-        if not info:
-            return None
-        sum_total = []
-        for sum_px in info['images']:
-            sum_total.append(sum_px['height'] + sum_px['width'])
-
-        img_index = sum_total.index(max(sum_total)) if sum_total else -1
-
-        show_id = info['show']['id']
-        show_publisher = info['show']['publisher']
-        show_name = self.sanitize_data(info['show']['name'])
-        episode_name = self.sanitize_data(info["name"])
-        image_url = info["images"][img_index]["url"] if img_index >= 0 else None
-        release_year = info["release_date"].split("-")[0]
-        scraped_episode_id = ["id"]
-        is_playable = info["is_playable"]
-        release_date = info["release_date"]
-
-        return {'id': episode_id_str,
-                'artist_id': show_id,
-                'artist_name': show_publisher,
-                'show_name': show_name,
-                'audio_name': episode_name,
-                'image_url': image_url,
-                'release_year': release_year,
-                'disc_number': None,
-                'audio_number': None,
-                'scraped_episode_id': scraped_episode_id,
-                'is_playable': is_playable,
-                'release_date': release_date}
-
-    def get_show_episodes(self, show_id_str):
-        """returns episodes of a show"""
-        episodes = []
-        offset = 0
-        limit = 50
-
-        while True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-            params = {"limit": limit, "offset": offset}
-            resp = requests.get(
-                f"https://api.spotify.com/v1/shows/{show_id_str}/episodes",
-                headers=headers,
-                params=params,
-            ).json()
-            offset += limit
-            for episode in resp["items"]:
-                episodes.append({"id": episode["id"],
-                                 "name": episode["name"],
-                                 "release_date": episode["release_date"]})
-                # episodes.append(episode["id"])
-
-            if len(resp["items"]) < limit:
-                break
-
-        return episodes
-
-    def get_show_info(self, show_id_str):
-        """returns show info"""
-        headers = {"Authorization": f"Bearer {self.token}"}
-        resp = requests.get(
-            f"https://api.spotify.com/v1/shows/{show_id_str}",
-            headers=headers,
-        ).json()
-        return {"name": self.sanitize_data(resp["name"]),
-                "publisher": resp["publisher"],
-                "id": resp["id"],
-                'total_episodes': resp["total_episodes"]}
-
-    # Functions directly related to downloading stuff
-    def download_audio(self, track_id, output_path, make_dirs=True):
-        """Downloads raw song audio from Spotify"""
-        # TODO: ADD disc_number IF > 1
-        try:
-            # print("###   FOUND SONG:", song_name, "   ###")
-            try:
-                _track_id = TrackId.from_base62(track_id)
-                stream = self.session.content_feeder().load(
-                    _track_id, VorbisOnlyAudioQuality(self.quality), False, None
-                )
-            except Exception as e:
-                if isinstance(e, ApiClient.StatusCodeException):
-                    _track_id = EpisodeId.from_base62(track_id)
-                    stream = self.session.content_feeder().load(
-                        _track_id, VorbisOnlyAudioQuality(self.quality), False, None
-                    )
-                else:
-                    raise e
-
-            # print("###   DOWNLOADING RAW AUDIO   ###")
-
-            total_size = stream.input_stream.size
-            downloaded = 0
-            _CHUNK_SIZE = self.chunk_size
-            fail = 0
-            self.progress = {"track_id": track_id,
-                             "total": total_size,
-                             "downloaded": downloaded}
-
-            segments = []
-
-            while downloaded <= total_size:
-                data = stream.input_stream.stream().read(_CHUNK_SIZE)
-
-                downloaded += len(data)
-                segments.append(data)
-                self.progress["downloaded"] = downloaded
-                if (total_size - downloaded) < _CHUNK_SIZE:
-                    _CHUNK_SIZE = total_size - downloaded
-                if len(data) == 0:
-                    fail += 1
-                if fail > self.reintent_download:
-                    break
-
-            self.progress = False
-
-            # Create output directories
-            _dirs_path = output_path.parent
-            if make_dirs:
-                _dirs_path.mkdir(parents=True, exist_ok=True)
-            elif not _dirs_path.exists():
-                raise FileNotFoundError(
-                    f"Directory {str(_dirs_path)} does not exist")
-
-            # Save raw audio as BytesIO object and convert from there
-            audio_bytes = BytesIO(b"".join(segments))
-            self.convert_audio_format(audio_bytes, output_path)
-
-            if not self.override_auto_wait:
-                time.sleep(self.anti_ban_wait_time)
+    def zfill(self, value, len: int = 2):
+        """Returns fill the strings with zeros"""
+        return str(value).zfill(len)
+
+    def login(self):
+        """Login to Spotify"""
+        logged_in = self.zs_api.login()
+        if logged_in:
             return True
-        except Exception as e:
-            print("###   download_track - FAILED TO DOWNLOAD   ###")
-            print(e)
-            print(track_id, output_path)
-            return False
+        print("Login to Spotify")
+        username = input("Username: ")
+        password = getpass()
+        return self.zs_api.login(username, password)
 
-    def search(self, search_term):
-        """Searches Spotify's API for relevant data"""
+    def set_audio_tags(self,
+                       filename,
+                       artists=None,
+                       name=None,
+                       album_name=None,
+                       release_year=None,
+                       disc_number=None,
+                       track_number=None,
+                       track_id_str=None,
+                       album_artist=None,
+                       image_url=None):
+        """sets music_tag metadata using mutagen if possible"""
+        artist = artists
 
-        resp = requests.get(
-            "https://api.spotify.com/v1/search",
-            {
-                "limit": self.limit,
-                "offset": "0",
-                "q": search_term,
-                "type": "track,album,playlist,artist"
-            },
-            headers={"Authorization": f"Bearer {self.token}"},
-        )
-        ret_tracks = []
-        tracks = resp.json()["tracks"]["items"]
-        if len(tracks) > 0:
-            for track in tracks:
-                if track["explicit"]:
-                    explicit = "[E]"
-                else:
-                    explicit = ""
-                ret_tracks.append({'id': track['id'], 'name': explicit + track["name"],
-                                  "artists": ','.join([artist['name'] for artist in track['artists']])})
-        ret_albums = []
-        albums = resp.json()["albums"]["items"]
-        if len(albums) > 0:
-            for album in albums:
-                # print("==>",album,"\n")
-                _year = re.search("(\\d{4})", album["release_date"]).group(1)
-                ret_albums.append({'name': album['name'],
-                                   'year': _year,
-                                   'artists': ','.join([artist['name'] for artist in album['artists']]),
-                                   'total_tracks': album['total_tracks'],
-                                   'id': album['id']})
+        if artist is not None and album_artist is None:
+            album_artist = artist
+        
+        # Check file format
+        extension = str(filename).split('.')[-1]
 
-        ret_playlists = []
-        playlists = resp.json()["playlists"]["items"]
-        for playlist in playlists:
-            ret_playlists.append({'name': playlist['name'],
-                                  'owner': playlist['owner']['display_name'],
-                                  'total_tracks': playlist['tracks']['total'],
-                                  'id': playlist['id']})
-
-        ret_artists = []
-        artists = resp.json()["artists"]["items"]
-        for artist in artists:
-            ret_artists.append({'name': artist['name'],
-                                'genres': '/'.join(artist['genres']),
-                                'id': artist['id']})
-
-        # TODO: Add search in episodes and shows
-
-        if len(ret_tracks) + len(ret_albums) + \
-                len(ret_playlists) + len(ret_artists) == 0:
-            return None
+        # mp3 uses id3
+        if extension == 'mp3':
+            tags = id3.ID3(filename)
+            if artist is not None:
+                # TPE1 Lead Artist/Performer/Soloist/Group
+                tags["TPE1"] = id3.TPE1(
+                    encoding=3, text=artist
+                )
+            if name is not None:
+                # TIT2 Title/songname/content description
+                tags["TIT2"] = id3.TIT2(
+                    encoding=3, text=name
+                )
+            if album_name is not None:
+                # TALB Album/Movie/Show title
+                tags["TALB"] = id3.TALB(encoding=3, text=album_name)
+            if release_year is not None:
+                # TDRC Recording time
+                tags["TDRC"] = id3.TDRC(encoding=3, text=release_year)
+                # TDOR Original release time
+                tags["TDOR"] = id3.TDOR(encoding=3, text=release_year)
+            if disc_number is not None:
+                # TPOS Part of a set
+                tags["TPOS"] = id3.TPOS(encoding=3, text=str(disc_number))
+            if track_number is not None:
+                # TRCK Track number/Position in set
+                tags["TRCK"] = id3.TRCK(
+                    encoding=3, text=str(track_number)
+                )
+            if track_id_str is not None:
+                # COMM User comment
+                tags["COMM"] = id3.COMM(
+                    encoding=3,
+                    lang="eng",
+                    text="https://open.spotify.com/track/" +
+                    track_id_str)
+            if album_artist is not None:
+                # TPE2 Band/orchestra/accompaniment
+                tags["TPE2"] = id3.TPE2(
+                    encoding=3, text=album_artist
+                )
+            if image_url is not None:
+                albumart = requests.get(image_url).content if image_url else None
+                if albumart:
+                    # APIC Attached (or linked) Picture.
+                    tags["APIC"] = id3.APIC(
+                        encoding=3,
+                        mime="image/jpeg",
+                        type=3,
+                        desc="0",
+                        data=albumart,
+                    )
+            # TCON Genre - TODO
+            tags.save()
+        elif extension == 'ogg':
+            tags = OggVorbis(filename)
+            if artist is not None:
+                tags["ARTIST"] = artist
+            if name is not None:
+                tags["TITLE"] = name
+            if album_name is not None:
+                tags["ALBUM"] = album_name
+            if release_year is not None:
+                tags["DATE"] = release_year
+            if disc_number is not None:
+                tags["DISCNUMBER"] = str(disc_number)
+            if track_number is not None:
+                tags["TRACKNUMBER"] = str(track_number)
+            if track_id_str is not None:
+                tags["DESCRIPTION"] = "https://open.spotify.com/track/" + track_id_str
+            if image_url is not None:
+                albumart = requests.get(image_url).content if image_url else None
+                if albumart:
+                    tags["METADATA_BLOCK_PICTURE"] = b64encode(albumart).decode("ascii")
+            tags.save()
+        # Use music_tag for other file formats
         else:
-            return {'tracks': ret_tracks,
-                    'albums': ret_albums,
-                    'playlists': ret_playlists,
-                    'artists': ret_artists}
+            tags = music_tag.load_file(filename)
+            if artist is not None:
+                tags["artist"] = artist
+            if name is not None:
+                tags["tracktitle"] = name
+            if album_name is not None:
+                tags["album"] = album_name
+            if release_year is not None:
+                tags["year"] = release_year
+            if disc_number is not None:
+                tags["discnumber"] = str(disc_number)
+            if track_number is not None:
+                tags["tracknumber"] = track_number
+            if track_id_str is not None:
+                tags["comment"] = "https://open.spotify.com/track/" + track_id_str
+            if image_url is not None:
+                albumart = requests.get(image_url).content if image_url else None
+                if albumart:
+                    tags["artwork"] = albumart
+            tags.save()
+
+    # ARCHIVE
+    def archive_migration(self):
+        """Migrates the old archive to the new one"""
+        for path in [
+                self.config_dir,
+                self.download_dir,
+                self.music_dir,
+                self.episodes_dir]:
+            tracks = self.archive.get_ids_from_old_archive(
+                Path(path, ".song_archive"))
+            if tracks:
+                print("Found old archive, migrating to new one...")
+                for track in tracks:
+                    if self.archive.exists(track['track_id']):
+                        print(
+                            f"Skipping {track['track_name']} - Already in archive")
+                        continue
+                    self.archive.add(track['track_id'],
+                                     artist=track['track_artist'],
+                                     track_name=track['track_name'],
+                                     fullpath=track['fullpath'],
+                                     timestamp=track['timestamp'],
+                                     audio_type="music",
+                                     save=False)
+                self.archive.save()
+            try:
+                os.remove(Path(path, ".song_archive"))
+            except OSError:
+                pass
+            print(
+                f"Migration complete from file: {str(Path(path, '.song_archive'))}")
+
+    # DOWNLOADERS
+    def download_track(self, track_id, path=None, caller=None):
+        if self.args.skip_downloaded and self.archive.exists(track_id):
+            print(f"Skipping {track_id} - Already Downloaded")
+            return True
+        track = self.zs_api.get_audio_info(track_id)
+        if not track['is_playable']:
+            print(f"Skipping {track['audio_name']} - Not Available")
+            return True
+
+        if caller == "album":
+            basepath = path or self.music_dir
+            filename = self.sanitize_data(
+                f"{track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
+            if self.album_in_filename:
+                filename = self.sanitize_data(
+                    f"{track['album']} {track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
+            fullpath = Path(basepath, filename)
+        elif caller == "playlist":
+            basepath = path or self.music_dir
+            filename = Path(
+                f"{track['artist_name']} - {track['audio_name']}.{self.args.audio_format}")
+            if self.album_in_filename:
+                filename = self.sanitize_data(
+                    f"{track['artist_name']} - {track['album']} - {track['audio_name']}.{self.args.audio_format}")
+            fullpath = Path(basepath, filename)
+        elif caller == "show":
+            basepath = path or self.episodes_dir
+            filename = self.sanitize_data(
+                f"{track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
+            fullpath = Path(basepath, filename)
+        elif caller == "episode":
+            basepath = path or self.episodes_dir
+            filename = self.sanitize_data(
+                f"{track['artist_name']} - {track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
+            fullpath = Path(basepath, filename)
+        else:
+            basepath = path or self.music_dir
+            filename = self.sanitize_data(
+                f"{track['artist_name']} - {track['audio_name']}.{self.args.audio_format}")
+            fullpath = Path(basepath, filename)
+
+        if self.not_skip_existing and fullpath.exists():
+            print(f"Skipping {filename} - Already downloaded")
+            return True
+        downloader = Thread(
+            target=self.zs_api.download_audio, args=(
+                track_id, fullpath, True))
+        downloader.start()
+        while not self.zs_api.progress:
+            time.sleep(0.1)
+        with tqdm(
+                desc=filename,
+                total=self.zs_api.progress['total'],
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+        ) as progress_bar:
+            progress = self.zs_api.progress
+            while progress:
+                progress_bar.update(progress['downloaded'] - progress_bar.n)
+                time.sleep(0.1)
+                progress = self.zs_api.progress
+            progress_bar.update(progress_bar.total - progress_bar.n)
+        print(f"Converting {filename}")
+        self.archive.add(track_id,
+                         artist=track['artist_name'],
+                         track_name=track['audio_name'],
+                         fullpath=fullpath,
+                         audio_type="music")
+        downloader.join()
+        print(f"Set audiotags {filename}")
+        self.set_audio_tags(fullpath,
+                            artists=track['artist_name'],
+                            name=track['audio_name'],
+                            album_name=track['album_name'],
+                            release_year=track['release_year'],
+                            disc_number=track['disc_number'],
+                            track_number=track['audio_number'],
+                            track_id_str=track['scraped_song_id'],
+                            image_url=track['image_url'])
+        print(f"Finished downloading {filename}")
+
+    def download_playlist(self, playlist_id):
+        playlist = self.zs_api.get_playlist_info(playlist_id)
+        if not playlist:
+            print("Playlist not found")
+            return False
+        songs = self.zs_api.get_playlist_songs(playlist_id)
+        if not songs:
+            print("Playlist is empty")
+            return False
+        print(f"Downloading {playlist['name']} playlist")
+        basepath = Path(self.music_dir, self.sanitize_data(playlist['name']))
+        for song in songs:
+            self.download_track(song['id'], basepath, "playlist")
+        print(f"Finished downloading {playlist['name']} playlist")
+
+    def download_all_user_playlists(self):
+        playlists = self.zs_api.get_all_user_playlists()
+        if not playlists:
+            print("No playlists found")
+            return False
+        for playlist in playlists['playlists']:
+            self.download_playlist(playlist['id'])
+            self.antiban_wait(self.antiban_album_time)
+        print("Finished downloading all user playlists")
+
+    def download_select_user_playlists(self):
+        playlists = self.zs_api.get_all_user_playlists()
+        if not playlists:
+            print("No playlists found")
+            return False
+        for i, playlist in enumerate(playlists['playlists']):
+            print(f"    {i + 1}. {playlist['name']}")
+
+        print('''
+        > SELECT A PLAYLIST BY ID.
+        > SELECT A RANGE BY ADDING A DASH BETWEEN BOTH ID's.
+          For example, typing 10 to get one playlist or 10-20 to get
+          every playlist from 10-20 (inclusive).
+        > SELECT A MULTIPLE PLAYLISTS BY ADDING A COMMA BETWEEN IDs.
+          For example, typing 10,11,20 will select playlists
+          10, 11 and 20 respectively.
+          Typing 1,11-20 will select playlists 1 and 11-20 (inclusive).
+        ''')
+        user_input = input("ID(s): ")
+
+        # Parse user input
+        user_formatted_input = set()
+        for part in user_input.split(','):
+            x = part.split('-')
+            user_formatted_input.update(range(int(x[0]), int(x[-1]) + 1))
+        sorted(user_formatted_input)
+
+        # Clean user input
+        invalid_ids = []
+        playlist_ids = []
+        for track_id in user_formatted_input:
+            if track_id > len(playlists['playlists']) or track_id < 1:
+                invalid_ids.append(track_id)
+            else:
+                playlist_ids.append(playlists['playlists'][track_id - 1]['id'])
+        if invalid_ids:
+            print(f'{invalid_ids} do not exist, downloading the rest')
+
+        for playlist in playlist_ids:
+            self.download_playlist(playlist)
+            self.antiban_wait(self.antiban_album_time)
+        print("Finished downloading selected playlists")
+
+    def download_album(self, album_id):
+        album = self.zs_api.get_album_info(album_id)
+        if not album:
+            print("Album not found")
+            return False
+        songs = self.zs_api.get_album_songs(album_id)
+        if not songs:
+            print("Album is empty")
+            return False
+        disc_number_flag = False
+        for song in songs:
+            if song["disc_number"] > 1:
+                disc_number_flag = True
+        print(f"Downloading {album['artists']} - {album['name']} album")
+        basepath = Path(
+            self.music_dir,
+            self.sanitize_data(album['artists']),
+            self.sanitize_data(f"{album['release_date']} - {album['name']}"))
+        for song in songs:
+            if disc_number_flag:
+                basepath = os.path.join(self.music_dir, 
+                                        self.sanitize_data(album['artists']),
+                                        self.sanitize_data(f"{album['release_date']} - {album['name']}"),
+                                        self.sanitize_data(f"{self.zfill(song['disc_number'])}"))
+            self.download_track(song['id'], basepath, "album")
+        print(
+            f"Finished downloading {album['artists']} - {album['name']} album")
+        return True
+
+    def download_artist(self, artist_id):
+        artist = self.zs_api.get_artist_info(artist_id)
+        if not artist:
+            print("Artist not found")
+            return False
+        albums = self.zs_api.get_artist_albums(artist_id)
+        if not albums:
+            print("Artist has no albums")
+            return False
+        for album in albums:
+            self.download_album(album['id'])
+            self.antiban_wait(self.antiban_album_time)
+        print(f"Finished downloading {artist['name']} artist")
+        return True
+
+    def download_liked_songs(self):
+        songs = self.zs_api.get_liked_tracks()
+        if not songs:
+            print("No liked songs found")
+            return False
+        print("Downloading liked songs")
+        basepath = Path(self.music_dir, "Liked Songs")
+        for song in songs:
+            self.download_track(song['id'], basepath, "liked_songs")
+        print("Finished downloading liked songs")
+        return True
+
+    def download_by_url(self, url):
+        parsed_url = self.zs_api.parse_url(url)
+        if parsed_url['track']:
+            ret = self.download_track(parsed_url['track'])
+        elif parsed_url['playlist']:
+            ret = self.download_playlist(parsed_url['playlist'])
+        elif parsed_url['album']:
+            ret = self.download_album(parsed_url['album'])
+        elif parsed_url['artist']:
+            ret = self.download_artist(parsed_url['artist'])
+        elif parsed_url['episode']:
+            ret = self.download_episode(parsed_url['episode'])
+        elif parsed_url['show']:
+            ret = self.download_all_show_episodes(parsed_url['show'])
+        else:
+            print("Invalid URL")
+            return False
+        return ret
+
+    def download_episode(self, episode_id, caller="episode"):
+        if self.args.skip_downloaded and self.archive.exists(episode_id):
+            print(f"Skipping {episode_id} - Already Downloaded")
+            return True
+
+        episode = self.zs_api.get_episode_info(episode_id)
+        if not episode:
+            print("Episode not found")
+            return False
+        print(f"Downloading {episode['audio_name']} episode")
+
+        if not episode['is_playable']:
+            print(f"Skipping {episode['audio_name']} - Not Available")
+            return True
+        basepath = self.episodes_dir
+        filename = self.sanitize_data(
+            f"{episode['show_name']} - {episode['audio_name']}.{self.args.audio_format}")
+
+        if caller == "show":
+            basepath = Path(
+                self.episodes_dir,
+                self.sanitize_data(
+                    episode['show_name']))
+            filename = self.sanitize_data(
+                f"{episode['audio_name']}.{self.args.audio_format}")
+
+        fullpath = Path(basepath, filename)
+
+        if self.not_skip_existing and fullpath.exists():
+            print(f"Skipping {filename} - Already downloaded")
+            return True
+
+        # self.zs_api.download_audio(episode_id, fullpath, True)
+        downloader = Thread(
+            target=self.zs_api.download_audio, args=(
+                episode_id, fullpath, True))
+        downloader.start()
+        while not self.zs_api.progress:
+            time.sleep(0.1)
+        with tqdm(
+                desc=filename,
+                total=self.zs_api.progress['total'],
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+        ) as progress_bar:
+            progress = self.zs_api.progress
+            while progress:
+                progress_bar.update(progress['downloaded'] - progress_bar.n)
+                time.sleep(0.1)
+                progress = self.zs_api.progress
+            progress_bar.update(progress_bar.total - progress_bar.n)
+        print(f"Converting {episode['audio_name']} episode")
+        downloader.join()
+        self.archive.add(episode_id,
+                         artist=episode['show_name'],
+                         track_name=episode['audio_name'],
+                         fullpath=fullpath,
+                         audio_type="episode")
+        print(f"Set audiotags {episode['audio_name']}")
+        self.set_audio_tags(fullpath,
+                            artists=episode['show_name'],
+                            name=episode['audio_name'],
+                            release_year=episode['release_year'],
+                            track_id_str=episode_id,
+                            image_url=episode['image_url'])
+        print(f"Finished downloading {episode['audio_name']} episode")
+
+    def download_all_show_episodes(self, show_id):
+        show = self.zs_api.get_show_info(show_id)
+        if not show:
+            print("Show not found")
+            return False
+        episodes = self.zs_api.get_show_episodes(show_id)
+        if not episodes:
+            print("Show has no episodes")
+            return False
+        for episode in episodes:
+            self.download_episode(episode['id'], "show")
+        print(f"Finished downloading {show['name']} show")
+        return True
+
+    def search(self, query):
+        # TODO: Add search by artist, album, playlist, etc.
+        results = self.zs_api.search(query)
+        if not results:
+            print("No results found")
+            return False
+        print("Search results:")
+        print("###TRACKS###")
+        i = 0
+        full_results = []
+        for result in results['tracks']:
+            print(f"{i}. {result['artists']} - {result['name']}")
+            result['type'] = 'track'
+            full_results.append(result)
+            i += 1
+        print("###ALBUMS###")
+        for result in results['albums']:
+            print(f"{i}. {result['artists']} - {result['name']}")
+            result['type'] = 'album'
+            full_results.append(result)
+            i += 1
+        print("###PLAYLISTS###")
+        for result in results['playlists']:
+            print(f"{i}. {result['name']}")
+            result['type'] = 'playlist'
+            full_results.append(result)
+            i += 1
+        print("###ARTISTS###")
+        for result in results['artists']:
+            print(f"{i}. {result['name']}")
+            result['type'] = 'artist'
+            full_results.append(result)
+            i += 1
+        print("")
+        print("Enter the number of the item you want to download")
+        print(f"allowed delimiters: {self.SEPARATORS}")
+        print("Enter 'all' to download all items")
+        print("Enter 'exit' to exit")
+        selection = input(">>>")
+        if selection == "exit":
+            return False
+        if selection == "all":
+            for result in full_results:
+                if result['type'] == 'track':
+                    self.download_track(result['id'])
+                elif result['type'] == 'album':
+                    self.download_album(result['id'])
+                elif result['type'] == 'playlist':
+                    self.download_playlist(result['id'])
+                elif result['type'] == 'artist':
+                    self.download_artist(result['id'])
+            return True
+        for item in self.split_input(selection):
+            if int(item) >= len(full_results):
+                print("Invalid selection")
+                return False
+            result = full_results[int(item)]
+            if result['type'] == 'track':
+                self.download_track(result['id'])
+            elif result['type'] == 'album':
+                self.download_album(result['id'])
+            elif result['type'] == 'playlist':
+                self.download_playlist(result['id'])
+            elif result['type'] == 'artist':
+                self.download_artist(result['id'])
+        return True
+
+    def start(self):
+        """Main client loop"""
+        self.splash()
+        while not self.login():
+            print("Invalid credentials")
+
+        if self.args.version:
+            print(f"ZSpotify version: {__version__}")
+            return
+
+        self.archive_migration()
+        if self.args.all_playlists:
+            self.download_all_user_playlists()
+        if self.args.select_playlists:
+            self.download_select_user_playlists()
+        if self.args.liked_songs:
+            self.download_liked_songs()
+        if self.args.playlist:
+            for playlist in self.split_input(self.args.playlist):
+                if "spotify.com" in self.args.playlist:
+                    self.download_by_url(playlist)
+                else:
+                    self.download_playlist(playlist)
+        if self.args.album:
+            for album in self.split_input(self.args.album):
+                if "spotify.com" in self.args.album:
+                    self.download_by_url(album)
+                else:
+                    self.download_album(album)
+        if self.args.artist:
+            for artist in self.split_input(self.args.artist):
+                if "spotify.com" in self.args.artist:
+                    self.download_by_url(artist)
+                else:
+                    self.download_artist(artist)
+        if self.args.track:
+            for track in self.split_input(self.args.track):
+                if "spotify.com" in self.args.track:
+                    self.download_by_url(track)
+                else:
+                    self.download_track(track)
+            print("All Done")
+        if self.args.episode:
+            for episode in self.split_input(self.args.episode):
+                if "spotify.com" in self.args.episode:
+                    self.download_by_url(episode)
+                else:
+                    self.download_episode(episode)
+        if self.args.full_show:
+            for show in self.split_input(self.args.full_show):
+                if "spotify.com" in self.args.full_show:
+                    self.download_by_url(show)
+                else:
+                    self.download_all_show_episodes(show)
+        if self.args.search:
+            for query in self.split_input(self.args.search):
+                if "spotify.com" in query:
+                    self.download_by_url(query)
+                else:
+                    self.search(query)
+        if self.args.bulk_download:
+            with open(self.args.bulk_download, "r") as file:
+                for line in file:
+                    for url in self.split_input(line.strip()):
+                        self.download_by_url(url)
+        elif len(sys.argv) <= 1:
+            self.args.search = input("Search: ")
+            if self.args.search:
+                self.search(self.args.search)
+            else:
+                print("Invalid input")
+
+
+if __name__ == "__main__":
+    try:
+        zs = zspotify()
+        zs.start()
+    except KeyboardInterrupt:
+        print("Interrupted by user")
+        sys.exit(0)
+    except Exception as error:
+        print(f"[!] ERROR {error} ")
