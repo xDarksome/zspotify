@@ -18,7 +18,7 @@ class ZSpotifyApi:
 
     def __init__(self,
                  sanitize=["\\", "/", ":", "*", "?", "'", "<", ">", '"'],
-                 config_dir=user_config_dir("ZSpotify"),
+                 config_dir=Path(user_config_dir("ZSpotify")),
                  music_format="mp3",
                  force_premium=False,
                  anti_ban_wait_time=5,

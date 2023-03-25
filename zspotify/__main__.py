@@ -195,7 +195,7 @@ class ZSpotify:
         parser.add_argument(
             "-cd", "--config-dir",
             help="Folder to save the config files",
-            default=user_config_dir("ZSpotify"))
+            default=Path(user_config_dir("ZSpotify")))
         parser.add_argument(
             "--archive",
             help="File to save the downloaded files",
