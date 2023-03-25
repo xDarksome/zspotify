@@ -15,7 +15,7 @@ import shutil
 import time
 
 
-class zspotify_api:
+class ZSpotifyApi:
 
     def __init__(self,
                  sanitize=["\\", "/", ":", "*", "?", "'", "<", ">", '"'],

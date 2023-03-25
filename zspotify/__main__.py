@@ -1,8 +1,9 @@
-from zspotify_lib import zspotify_api
+from zspotify.zspotify_api import ZSpotifyApi
 
 from appdirs import user_config_dir
 from base64 import b64encode
 from getpass import getpass
+import importlib.metadata as metadata
 from mutagen import id3
 from mutagen.oggvorbis import OggVorbis
 from pathlib import Path
@@ -19,16 +20,21 @@ import requests
 import sys
 import time
 
-
-__version__ = "2.0.0_alpha"
-__author__ = [{"name": "Jonathan Salinas Vargas",
-               "github": "https://github.com/jsavargas"},
-              {"name": "Yuriy Kovrigin",
-               "github": "https://github.com/Bionded"}]
-
 _ANTI_BAN_WAIT_TIME = os.environ.get('ANTI_BAN_WAIT_TIME', 5)
 _ANTI_BAN_WAIT_TIME_ALBUMS = os.environ.get('ANTI_BAN_WAIT_TIME_ALBUMS', 30)
 _LIMIT_RESULTS = os.environ.get('LIMIT_RESULTS', 10)
+
+
+try:
+    __version__ = metadata.version("zspotify")
+except metadata.PackageNotFoundError:
+    __version__ = "unknown"
+
+
+def main():
+    """Creates an instance of ZSpotify"""
+    zs = ZSpotify()
+    zs.start()
 
 
 class archive:
@@ -113,13 +119,13 @@ class archive:
 
 
 # UTILS
-class zspotify:
+class ZSpotify:
 
     def __init__(self):
         self.SANITIZE_CHARS = ["\\", "/", ":", "*", "?", "'", "<", ">", '"']
         self.SEPARATORS = [",", ";"]
         self.args = self.parse_args()
-        self.zs_api = zspotify_api(
+        self.zs_api = ZSpotifyApi(
             sanitize=self.SANITIZE_CHARS,
             config_dir=self.args.config_dir,
             music_format=self.args.audio_format,
@@ -243,7 +249,7 @@ class zspotify:
         parser.add_argument(
             "-s",
             "--skip-downloaded",
-            help="Skip already downloaded songs if exist in archive even it is dosn't exist in the filesystem",
+            help="Skip already downloaded songs if exist in archive even it is doesn't exist in the filesystem",
             action="store_true",
             default=False)
         parser.add_argument(
@@ -914,8 +920,7 @@ class zspotify:
 
 if __name__ == "__main__":
     try:
-        zs = zspotify()
-        zs.start()
+        main()
     except KeyboardInterrupt:
         print("Interrupted by user")
         sys.exit(0)
