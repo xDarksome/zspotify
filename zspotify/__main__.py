@@ -213,7 +213,7 @@ class ZSpotify:
             help="Folder to save the downloaded episodes files")
         parser.add_argument(
             "-v", "--version",
-            help="Shows the current version of ZSpotify",
+            help="Shows the current version of ZSpotify and exit",
             action="store_true")
         parser.add_argument(
             "-af", "--audio-format",
@@ -847,15 +847,16 @@ class ZSpotify:
 
     def start(self):
         """Main client loop"""
+        if self.args.version:
+            print(f"ZSpotify {__version__}")
+            return
+
         self.splash()
         while not self.login():
             print("Invalid credentials")
 
-        if self.args.version:
-            print(f"ZSpotify version: {__version__}")
-            return
-
         self.archive_migration()
+
         if self.args.all_playlists:
             self.download_all_user_playlists()
         if self.args.select_playlists:
