@@ -5,7 +5,6 @@ from librespot.core import ApiClient, Session
 from librespot.metadata import TrackId, EpisodeId
 from pathlib import Path
 from pydub import AudioSegment
-from pydub.utils import mediainfo
 
 import json
 import os

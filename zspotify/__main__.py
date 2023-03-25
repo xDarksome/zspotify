@@ -15,7 +15,6 @@ import datetime
 import json
 import music_tag
 import os
-import platform
 import requests
 import sys
 import time
@@ -287,7 +286,7 @@ class ZSpotify:
 
     def clear(self):
         """Clear the console window"""
-        if platform.system() == "Windows":
+        if os.name == "nt":
             os.system("cls")
         else:
             os.system("clear")
