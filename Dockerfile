@@ -1,27 +1,44 @@
-FROM python:3.9-alpine as ffmpeg
+FROM python:3.9-alpine as builder
 
-#FROM jsavargas/zspotify as base
+WORKDIR /app
 
-RUN apk --update add git ffmpeg
+COPY . .
 
-FROM ffmpeg as builder
+RUN apk add --no-cache git ffmpeg
 
-WORKDIR /install
+# Build zspotify and it's dependencies into wheels
+RUN pip install build wheel
+RUN mkdir -p /app/wheels
+RUN pip wheel -w /app/wheels .
 
-RUN apk add gcc libc-dev zlib zlib-dev jpeg-dev
-COPY requirements.txt requirements.txt
-RUN /usr/local/bin/python -m pip install --upgrade pip && \
-    pip install --prefix="/install" -r requirements.txt \
-    && rm -rf /var/lib/apt/lists/*
+# Find the dependencies for ffmpeg using ldd, excluding ld-musl-x86_64.so.1
+RUN mkdir -p /app/ffmpeg-deps \
+    && cd /app/ffmpeg-deps \
+    && ldd ffmpeg | grep '=> /' \
+    | awk '{print $3}' \
+    | grep -v 'ld-musl-x86_64.so.1' \
+    | xargs -I '{}' cp -v '{}' . \
+    && ldd ffprobe | grep '=> /' \
+    | awk '{print $3}' \
+    | grep -v 'ld-musl-x86_64.so.1' \
+    | xargs -I '{}' cp -n -v '{}' .
 
 FROM python:3.9-alpine
 
-WORKDIR /app
-COPY --from=builder /install /usr/local
-COPY --from=ffmpeg /usr/ /usr/
+# Copy over ffmpeg and its dependencies
+COPY --from=builder /usr/bin/ffmpeg /usr/bin/ffmpeg
+COPY --from=builder /usr/bin/ffprobe /usr/bin/ffprobe
+COPY --from=builder /app/ffmpeg-deps /usr/lib/
 
-COPY *.py /app/
+# Copy the wheel file from the builder stage
+COPY --from=builder /app/wheels/*.whl .
+
+# Install the wheel file
+RUN pip install --no-deps *.whl
+
+# Clean up installation
+RUN rm *.whl
 
 VOLUME /download /config
 
-ENTRYPOINT ["/usr/local/bin/python3", "main.py"]
+ENTRYPOINT ["zspotify"]

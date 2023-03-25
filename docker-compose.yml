@@ -15,4 +15,3 @@ services:
     volumes:
       - /mnt/user/appdata/zspotify:/root/.config/ZSpotify
       - /mnt/user/download/torrent:/root/Music/
-
