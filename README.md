@@ -21,7 +21,10 @@ pip install git+https://github.com/jsavargas/zspotify
 
 ## Installation (Docker)
 
-WIP
+```bash
+docker run -it -v $(pwd)/docker/config:/config -v $(pwd)/docker/download:/download jsavargas/zspotify
+docker-compose run --rm zspotify
+```
 
 
 ## Usage
@@ -95,8 +98,9 @@ options:
 Pull requests are welcome. For major changes, please open an issue first
 to discuss what you would like to change.
 
-- [GitHub](https://github.com/jsavargas/zspotify) of this repository.
+- [GitHub Issues](https://github.com/jsavargas/zspotify/issues) of this repository.
 - [DockerHub](https://hub.docker.com/r/jsavargas/zspotify) of this repository.
+- [Discord](https://discord.gg/grCt4AufmC) server of this repository.
 
 
 ## Acknowledgements

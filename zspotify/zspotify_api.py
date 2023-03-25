@@ -98,9 +98,11 @@ class ZSpotifyApi:
             if self.session.get_user_attribute(
                     "type") == "premium" or self.force_premium:
                 self.quality = AudioQuality.VERY_HIGH
-                print("username:",json.load(open(self.credentials))['username'],"[ DETECTED PREMIUM ACCOUNT - USING VERY_HIGH QUALITY ]\n")
+                print("username:", json.load(open(self.credentials))['username'],
+                      "[ DETECTED PREMIUM ACCOUNT - USING VERY_HIGH QUALITY ]\n")
             else:
-                print("username:",json.load(open(self.credentials))['username'],"[ DETECTED FREE ACCOUNT - USING HIGH QUALITY ]\n")
+                print("username:", json.load(open(self.credentials))['username'],
+                      "[ DETECTED FREE ACCOUNT - USING HIGH QUALITY ]\n")
                 self.quality = AudioQuality.HIGH
         else:
             except_msg = "You must login first"
@@ -256,8 +258,7 @@ class ZSpotifyApi:
             album_name = self.sanitize_data(info["tracks"][0]["album"]["name"])
             song_name = self.sanitize_data(info["tracks"][0]["name"])
             image_url = info["tracks"][0]["album"]["images"][img_index]["url"] if img_index >= 0 else None
-            release_year = info["tracks"][0]["album"]["release_date"].split(
-                "-")[0]
+            release_year = info["tracks"][0]["album"]["release_date"].split("-")[0]
             disc_number = info["tracks"][0]["disc_number"]
             track_number = info["tracks"][0]["track_number"]
             scraped_song_id = info["tracks"][0]["id"]
@@ -482,8 +483,8 @@ class ZSpotifyApi:
         try:
             info = json.loads(
                 requests.get(
-                    "https://api.spotify.com/v1/artists/" +
-                    artist_id,
+                    "https://api.spotify.com/v1/artists/"
+                    + artist_id,
                     headers={
                         "Authorization": f"Bearer {self.token}"}).text)
 

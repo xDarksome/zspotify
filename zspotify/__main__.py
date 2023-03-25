@@ -335,7 +335,7 @@ class ZSpotify:
 
         if artist is not None and album_artist is None:
             album_artist = artist
-        
+
         # Check file format
         extension = str(filename).split('.')[-1]
 
@@ -373,8 +373,7 @@ class ZSpotify:
                 tags["COMM"] = id3.COMM(
                     encoding=3,
                     lang="eng",
-                    text="https://open.spotify.com/track/" +
-                    track_id_str)
+                    text="https://open.spotify.com/track/" + track_id_str)
             if album_artist is not None:
                 # TPE2 Band/orchestra/accompaniment
                 tags["TPE2"] = id3.TPE2(
@@ -640,7 +639,7 @@ class ZSpotify:
             self.sanitize_data(f"{album['release_date']} - {album['name']}"))
         for song in songs:
             if disc_number_flag:
-                basepath = os.path.join(self.music_dir, 
+                basepath = os.path.join(self.music_dir,
                                         self.sanitize_data(album['artists']),
                                         self.sanitize_data(f"{album['release_date']} - {album['name']}"),
                                         self.sanitize_data(f"{self.zfill(song['disc_number'])}"))
