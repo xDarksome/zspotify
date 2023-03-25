@@ -1,138 +1,104 @@
 # zspotify
 
-[![](https://badgen.net/badge/icon/github?icon=github&label)](https://github.com/jsavargas/zspotify)
-[![](https://badgen.net/badge/icon/docker?icon=docker&label)](https://hub.docker.com/r/jsavargas/zspotify)
-[![Docker Pulls](https://badgen.net/docker/pulls/jsavargas/zspotify?icon=docker&label=pulls)](https://hub.docker.com/r/jsavargas/zspotify/)
-[![Docker Stars](https://badgen.net/docker/stars/jsavargas/zspotify?icon=docker&label=stars)](https://hub.docker.com/r/jsavargas/zspotify/)
-[![Docker Image Size](https://badgen.net/docker/size/jsavargas/zspotify?icon=docker&label=image%20size)](https://hub.docker.com/r/jsavargas/zspotify/)
-![Github stars](https://badgen.net/github/stars/jsavargas/zspotify?icon=github&label=stars)
-![Github forks](https://badgen.net/github/forks/jsavargas/zspotify?icon=github&label=forks)
-![Github last-commit](https://img.shields.io/github/last-commit/jsavargas/zspotify)
-![Github license](https://badgen.net/github/license/jsavargas/zspotify)
+zspotify is a Spotify downloader that enables users to find and download songs.
 
 
+## Requirements
 
-## Find us at:
+- Python 3.9 or greater
+- ffmpeg
 
-* [GitHub](https://github.com/jsavargas/zspotify) - GitHub of this repository.
-* [DockerHub](https://hub.docker.com/r/jsavargas/zspotify) - DockerHub of this repository.
+> :warning: ffmpeg should be installed from your package manager of choice on Linux or by
+downloading the binaries from [ffmpeg.org](https://ffmpeg.org) and placing them in your %PATH% in Windows.
 
-Fork of https://github.com/Footsiefat/zspotify
 
-Spotify song downloader without injecting into the windows client
+## Installation (pip)
 
-![](images/image01.png)
-
-![](images/image02.png)
-
-## Docker:
-
-```
-  docker run --rm -it -v $(pwd)/docker/config:/root/.config/ZSpotify -v $(pwd)/docker/download:/root/Music jsavargas/zspotify
-  
-  docker-compose run --rm zspotify
-
-  docker-compose run --rm zspotify -ls
-
-  docker-compose run --rm zspotify -p
-
-  docker-compose run --rm zspotify "Queen"
-
-  
+```bash
+pip install git+https://github.com/jsavargas/zspotify
 ```
 
 
+## Installation (Docker)
 
-## Requirements:
+WIP
 
-```
-Binaries
-    - Python 3.9 or greater
-    - ffmpeg*
 
-Python packages:
-    - pip install -r requirements.txt
-```
-
-\*ffmpeg can be installed via apt for Debian-based distros or by downloading the binaries from [ffmpeg.org](https://ffmpeg.org) and placing them in your %PATH% in Windows.
-
+## Usage
 
 ```
-Command line usage:
-  python zspotify.py                              Loads search prompt to find then download a specific track, album or playlist
+usage: zspotify [-h] [-ap] [-sp] [-ls] [-pl PLAYLIST] [-tr TRACK] [-al ALBUM] [-ar ARTIST] [-ep EPISODE]
+                [-fs FULL_SHOW] [-cd CONFIG_DIR] [--archive ARCHIVE] [-d DOWNLOAD_DIR] [-md MUSIC_DIR]
+                [-pd EPISODES_DIR] [-v] [-af {mp3,ogg}] [--album-in-filename] [--antiban-time ANTIBAN_TIME]
+                [--antiban-album ANTIBAN_ALBUM] [--limit LIMIT] [-f] [-ns] [-s] [-cf CREDENTIALS_FILE]
+                [-bd BULK_DOWNLOAD]
+                [search]
 
-Extra command line options:
-  -p, --playlist          Downloads a saved playlist from your account
-  -ls, --liked-songs      Downloads all the liked songs from your account
-  -pid, --playlist-id [id] [folder_name]  Downloads a playlist from their id and saves in folder_name. This playlist can be created by other user, not only your playlists. 
+positional arguments:
+  search                Searches for a track, album, artist or playlist or download by url
 
-Special hardcoded options:
-  ROOT_PATH           Change this path if you don't like the default directory where ZSpotify saves the music
-
-  SKIP_EXISTING_FILES Set this to False if you want ZSpotify to overwrite files with the same name rather than skipping the song
-
-  MUSIC_FORMAT        Set this to "ogg" if you would rather that format audio over "mp3"
-  RAW_AUDIO_AS_IS     Set this to True to only stream the audio to a file and do no re-encoding or post processing
-  
-  FORCE_PREMIUM       Set this to True if ZSpotify isn't automatically detecting that you are using a premium account
-
-  LIMIT_ELEMENTS      Set limit of elements brought in the list, by default 50 elements in each category
-  
+options:
+  -h, --help            show this help message and exit
+  -ap, --all-playlists  Downloads all saved playlist from your library
+  -sp, --select-playlists
+                        Downloads a saved playlist from your library
+  -ls, --liked-songs    Downloads your liked songs
+  -pl PLAYLIST, --playlist PLAYLIST
+                        Download playlist by id or url
+  -tr TRACK, --track TRACK
+                        Downloads a track from their id or url
+  -al ALBUM, --album ALBUM
+                        Downloads an album from their id or url
+  -ar ARTIST, --artist ARTIST
+                        Downloads an artist from their id or url
+  -ep EPISODE, --episode EPISODE
+                        Downloads a episode from their id or url
+  -fs FULL_SHOW, --full-show FULL_SHOW
+                        Downloads all show episodes from id or url
+  -cd CONFIG_DIR, --config-dir CONFIG_DIR
+                        Folder to save the config files
+  --archive ARCHIVE     File to save the downloaded files
+  -d DOWNLOAD_DIR, --download-dir DOWNLOAD_DIR
+                        Folder to save the downloaded files
+  -md MUSIC_DIR, --music-dir MUSIC_DIR
+                        Folder to save the downloaded music files
+  -pd EPISODES_DIR, --episodes-dir EPISODES_DIR
+                        Folder to save the downloaded episodes files
+  -v, --version         Shows the current version of ZSpotify
+  -af {mp3,ogg}, --audio-format {mp3,ogg}
+                        Audio format to download the tracks
+  --album-in-filename   Adds the album name to the filename
+  --antiban-time ANTIBAN_TIME
+                        Time to wait between downloads to avoid Ban
+  --antiban-album ANTIBAN_ALBUM
+                        Time to wait between album downloads to avoid Ban
+  --limit LIMIT         limit
+  -f, --force-premium   Force premium account
+  -ns, --not-skip-existing
+                        If flag setted NOT Skip existing already downloaded tracks
+  -s, --skip-downloaded
+                        Skip already downloaded songs if exist in archive even it is doesn't exist in the filesystem
+  -cf CREDENTIALS_FILE, --credentials-file CREDENTIALS_FILE
+                        File to save the credentials
+  -bd BULK_DOWNLOAD, --bulk-download BULK_DOWNLOAD
+                        Bulk download from file with urls
 ```
 
 
+## Changelog
+
+[View Changelog Here](https://github.com/jsavargas/zspotify/CHANGELOG.md)
 
 
-## **Changelog:**
+## Contributing
 
-**v1.9.9 (03 Feb 2023)**
-- Sort playlists by name / MauritzFunke
+Pull requests are welcome. For major changes, please open an issue first
+to discuss what you would like to change.
 
-**v1.9.8 (01 Feb 2023)**
-- Fix album without image / jlsalvador/fix-album-without-image
-- Add egg name for librespot-python dependency (Fix) / scarlettekk
+- [GitHub](https://github.com/jsavargas/zspotify) of this repository.
+- [DockerHub](https://hub.docker.com/r/jsavargas/zspotify) of this repository.
 
-**v1.9.7 (29 Dic 2022)**
-- Sum the size of the images, compares and saves the index of the largest image size
 
-**v1.9.4 (14 Oct 2022)**
-- add cover 640x640
+## Acknowledgements
 
-**v1.9.3 (30 Sep 2022)**
-- add KeyboardInterrupt control - Control + C
-
-**v1.9.2 (19 Aug 2022)**
-- Added playlist_id support (https://github.com/VicDominguez)
-- Fix -ls argument (https://github.com/axsddlr)
-- Song Archive, to SKIP_PREVIOUSLY_DOWNLOADED (https://github.com/diebolo)
-
-**v1.9.1 (19 Aug 2022)**
-- Added extra option to download a playlist with the playlist-id. This playlist doesn't need be yours, it can be from other user.
-
-**v1.9 (20 Jun 2022):**
-- Fix fails at 87%
-
-**v1.8 (23 Oct 2021):**
-- exclude album_type single
-- Added progress bar for downloads.
-- Changed welcome banner and removed unnecessary debug print statements.
-- Show single progress bar for entire album.
-- Added a small delay between downloading each track when downloading in bulk to help with downloading issues and potential bans.
-
-**v1.7 (21 Oct 2021):**
-- Added docker support
-- Added range download example 1-10 example: SELECT ITEM BY ID: 1-10
-- Added download all albums by artist
-- Added subfolders for each disc
-- Naming tracks: "artist - album - track-number. name"
-- Setting Limit in 50 items
-
-**v1.6 (20 Oct 2021):**
-- Added Pillow to requirements.txt.
-- Removed websocket-client from requirements.txt because librespot-python added it to their dependency list.
-- Made it hide your password when you type it in.
-- Added manual override to force premium quality if zspotify cannot auto detect it.
-- Added option to just download the raw audio with no re-encoding at all.
-- Added Shebang line so it runs smoother on Linux.
-- Made it download the entire track at once now so it is more efficent and fixed a bug users encountered.
-
+- [Footsiefat](https://github.com/Footsiefat) for original zspotify implementation
