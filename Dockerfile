@@ -14,21 +14,17 @@ RUN pip wheel -w /app/wheels .
 # Find the dependencies for ffmpeg using ldd, excluding ld-musl-x86_64.so.1
 RUN mkdir -p /app/ffmpeg-deps \
     && cd /app/ffmpeg-deps \
-    && ldd ffmpeg | grep '=> /' \
+    && ldd /usr/bin/ffmpeg | grep '=> /' \
     | awk '{print $3}' \
     | grep -v 'ld-musl-x86_64.so.1' \
-    | xargs -I '{}' cp -v '{}' . \
-    && ldd ffprobe | grep '=> /' \
-    | awk '{print $3}' \
-    | grep -v 'ld-musl-x86_64.so.1' \
-    | xargs -I '{}' cp -n -v '{}' .
+    | xargs -I '{}' cp -v '{}' .
 
 FROM python:3.9-alpine
 
 # Copy over ffmpeg and its dependencies
 COPY --from=builder /usr/bin/ffmpeg /usr/bin/ffmpeg
 COPY --from=builder /usr/bin/ffprobe /usr/bin/ffprobe
-COPY --from=builder /app/ffmpeg-deps /usr/lib/
+COPY --from=builder /app/ffmpeg-deps/lib* /usr/lib/
 
 # Copy the wheel file from the builder stage
 COPY --from=builder /app/wheels/*.whl .

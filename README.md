@@ -22,8 +22,8 @@ pip install git+https://github.com/jsavargas/zspotify
 ## Installation (Docker)
 
 ```bash
-docker run -it -v $(pwd)/docker/config:/config -v $(pwd)/docker/download:/download jsavargas/zspotify
-docker-compose run --rm zspotify
+docker pull jsavargas/zspotify
+docker run -v ${HOME}/.zspotify:/root/.zspotify -v ${HOME}/Music:/root/Music -it jsavargas/zspotify
 ```
 
 
