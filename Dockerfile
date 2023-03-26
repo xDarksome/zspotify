@@ -5,6 +5,8 @@ WORKDIR /app
 COPY . .
 
 RUN apk add --no-cache git ffmpeg
+# armv7 needs these
+RUN apk add --no-cache gcc libc-dev zlib zlib-dev jpeg-dev
 
 # Build zspotify and it's dependencies into wheels
 RUN pip install build wheel
