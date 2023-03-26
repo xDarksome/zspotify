@@ -1,0 +1,35 @@
+name: ci-alpha
+
+on:
+  push:
+    branches:
+      - "Bionded"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Get current pyproject version
+        id: version
+        run: echo "version=$(cat pyproject.toml | grep "version" | egrep -o "[0-9.]{1,}")" >> $GITHUB_OUTPUT
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/zspotify:${{ steps.version.outputs.version }}-alpha
