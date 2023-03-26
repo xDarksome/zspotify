@@ -32,7 +32,12 @@ except metadata.PackageNotFoundError:
 def main():
     """Creates an instance of ZSpotify"""
     zs = ZSpotify()
-    zs.start()
+
+    try:
+        zs.start()
+    except KeyboardInterrupt:
+        print("Interrupted by user")
+        sys.exit(0)
 
 
 class archive:
@@ -913,10 +918,4 @@ class ZSpotify:
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("Interrupted by user")
-        sys.exit(0)
-    except Exception as error:
-        print(f"[!] ERROR {error} ")
+    main()
