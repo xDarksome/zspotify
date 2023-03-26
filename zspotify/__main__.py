@@ -1,6 +1,5 @@
 from zspotify.zspotify_api import ZSpotifyApi
 
-from appdirs import user_config_dir
 from base64 import b64encode
 from getpass import getpass
 import importlib.metadata as metadata
@@ -133,13 +132,13 @@ class ZSpotify:
             credentials=self.args.credentials_file,
             limit=self.args.limit)
 
-        self.config_dir = self.args.config_dir
+        self.config_dir = Path(self.args.config_dir)
         self.download_dir = Path.home() / "Music"
         if self.args.download_dir:
             self.download_dir = Path.home() / self.args.download_dir
 
-        self.music_dir = Path(self.download_dir, "ZSpotify Music")
-        self.episodes_dir = Path(self.download_dir, "ZSpotify Podcasts")
+        self.music_dir = self.download_dir / "ZSpotify Music"
+        self.episodes_dir = self.download_dir / "ZSpotify Podcasts"
 
         if self.args.music_dir:
             self.music_dir = Path.home() / self.args.music_dir
@@ -195,7 +194,7 @@ class ZSpotify:
         parser.add_argument(
             "-cd", "--config-dir",
             help="Folder to save the config files",
-            default=Path(user_config_dir("ZSpotify")))
+            default=Path.home() / ".zspotify")
         parser.add_argument(
             "--archive",
             help="File to save the downloaded files",
@@ -255,9 +254,7 @@ class ZSpotify:
             "-cf",
             "--credentials-file",
             help="File to save the credentials",
-            default=Path(
-                user_config_dir("ZSpotify"),
-                "credentials.json"))
+            default=Path.home() / ".zspotify" / "credentials.json")
         parser.add_argument("-bd", "--bulk-download",
                             help="Bulk download from file with urls")
 
@@ -444,8 +441,7 @@ class ZSpotify:
                 self.download_dir,
                 self.music_dir,
                 self.episodes_dir]:
-            tracks = self.archive.get_ids_from_old_archive(
-                Path(path, ".song_archive"))
+            tracks = self.archive.get_ids_from_old_archive(path / ".song_archive")
             if tracks:
                 print("Found old archive, migrating to new one...")
                 for track in tracks:
@@ -465,8 +461,7 @@ class ZSpotify:
                 os.remove(Path(path, ".song_archive"))
             except OSError:
                 pass
-            print(
-                f"Migration complete from file: {str(Path(path, '.song_archive'))}")
+            print(f"Migration complete from file: {str(path / '.song_archive')}")
 
     # DOWNLOADERS
     def download_track(self, track_id, path=None, caller=None):

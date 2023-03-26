@@ -1,4 +1,3 @@
-from appdirs import user_config_dir
 from io import BytesIO
 from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
 from librespot.core import ApiClient, Session
@@ -18,7 +17,7 @@ class ZSpotifyApi:
 
     def __init__(self,
                  sanitize=["\\", "/", ":", "*", "?", "'", "<", ">", '"'],
-                 config_dir=Path(user_config_dir("ZSpotify")),
+                 config_dir=Path.home() / ".zspotify",
                  music_format="mp3",
                  force_premium=False,
                  anti_ban_wait_time=5,
@@ -31,16 +30,16 @@ class ZSpotifyApi:
                  ):
         self._version = "1.10.0"
         self.sanitize = sanitize
-        self.config_dir = config_dir
+        self.config_dir = Path(config_dir)
         self.music_format = music_format
         self.force_premium = force_premium
         self.anti_ban_wait_time = anti_ban_wait_time
         self.override_auto_wait = override_auto_wait
         self.chunk_size = chunk_size
         if credentials == '' or credentials is None:
-            self.credentials = Path(self.config_dir, "credentials.json")
+            self.credentials = self.config_dir / "credentials.json"
         else:
-            self.credentials = credentials
+            self.credentials = Path(credentials)
         self.limit = limit
         self.reintent_download = reintent_download
         self.quality = AudioQuality.HIGH
