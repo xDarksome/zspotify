@@ -39,6 +39,4 @@ RUN pip install --no-deps *.whl
 # Clean up installation
 RUN rm *.whl
 
-VOLUME /download /config
-
 ENTRYPOINT ["zspotify"]
