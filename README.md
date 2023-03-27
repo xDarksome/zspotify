@@ -93,7 +93,7 @@ options:
 
 ## Changelog
 
-[View Changelog Here](https://github.com/jsavargas/zspotify/CHANGELOG.md)
+[View Changelog Here](https://github.com/jsavargas/zspotify/blob/master/CHANGELOG.md)
 
 
 ## Contributing
