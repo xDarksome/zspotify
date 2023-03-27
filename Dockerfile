@@ -1,26 +1,40 @@
-FROM python:3.9-alpine as base
-
-#FROM jsavargas/zspotify as base
-
-RUN apk --update add git ffmpeg
-
-FROM base as builder
-
-WORKDIR /install
-
-COPY requirements.txt /requirements.txt
-RUN apk add gcc libc-dev zlib zlib-dev jpeg-dev \
-    && /usr/local/bin/python -m pip install --upgrade pip && pip install --prefix="/install" -r /requirements.txt
-
-
-FROM base
+FROM python:3.9-alpine as builder
 
 WORKDIR /app
-COPY --from=builder /install /usr/local
 
-COPY zspotify.py /app
+COPY . .
 
-VOLUME /download /config
+RUN apk add --no-cache git ffmpeg
+# armv7 needs these
+RUN apk add --no-cache gcc libc-dev zlib zlib-dev jpeg-dev
 
-ENTRYPOINT ["/usr/local/bin/python3", "zspotify.py"]
+# Build zspotify and it's dependencies into wheels
+RUN pip install build wheel
+RUN mkdir -p /app/wheels
+RUN pip wheel -w /app/wheels .
 
+# Find the dependencies for ffmpeg using ldd, excluding ld-musl-x86_64.so.1
+RUN mkdir -p /app/ffmpeg-deps \
+    && cd /app/ffmpeg-deps \
+    && ldd /usr/bin/ffmpeg | grep '=> /' \
+    | awk '{print $3}' \
+    | grep -v 'ld-musl-x86_64.so.1' \
+    | xargs -I '{}' cp -v '{}' .
+
+FROM python:3.9-alpine
+
+# Copy over ffmpeg and its dependencies
+COPY --from=builder /usr/bin/ffmpeg /usr/bin/ffmpeg
+COPY --from=builder /usr/bin/ffprobe /usr/bin/ffprobe
+COPY --from=builder /app/ffmpeg-deps/lib* /usr/lib/
+
+# Copy the wheel file from the builder stage
+COPY --from=builder /app/wheels/*.whl .
+
+# Install the wheel file
+RUN pip install --no-deps *.whl
+
+# Clean up installation
+RUN rm *.whl
+
+ENTRYPOINT ["zspotify"]

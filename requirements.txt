@@ -1,7 +1,7 @@
 git+https://github.com/kokarare1212/librespot-python#egg=librespot
+appdirs
 mutagen
 music_tag
 pydub
 Pillow
 tqdm
-appdirs
