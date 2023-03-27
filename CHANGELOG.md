@@ -1,5 +1,10 @@
 # Changelog
 
+**v2.0.0 (27 Mar 2023)**
+- Major rewrite / Bionded
+- Implement Python argparse / Bionded
+- pip-ify zspotify / nicknitewolf
+
 **v1.9.9 (03 Feb 2023)**
 - Sort playlists by name / MauritzFunke
 

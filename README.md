@@ -1,5 +1,8 @@
 # zspotify
 
+[![Docker CI](https://github.com/jsavargas/zspotify/actions/workflows/docker-ci.yml/badge.svg)](https://github.com/jsavargas/zspotify/actions/workflows/docker-ci.yml)
+[![GPLv3](https://img.shields.io/github/license/jsavargas/zspotify)](https://opensource.org/license/gpl-3-0)
+
 zspotify is a Spotify downloader that enables users to find and download songs.
 
 
