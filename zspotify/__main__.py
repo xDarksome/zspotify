@@ -786,26 +786,26 @@ class ZSpotify:
             return False
         print("Search results:")
         print("###TRACKS###")
-        i = 0
         full_results = []
+        i = 1
         for result in results['tracks']:
             print(f"{i}. {result['artists']} - {result['name']}")
             result['type'] = 'track'
             full_results.append(result)
             i += 1
-        print("###ALBUMS###")
+        print("\n###ALBUMS###")
         for result in results['albums']:
             print(f"{i}. {result['artists']} - {result['name']}")
             result['type'] = 'album'
             full_results.append(result)
             i += 1
-        print("###PLAYLISTS###")
+        print("\n###PLAYLISTS###")
         for result in results['playlists']:
             print(f"{i}. {result['name']}")
             result['type'] = 'playlist'
             full_results.append(result)
             i += 1
-        print("###ARTISTS###")
+        print("\n###ARTISTS###")
         for result in results['artists']:
             print(f"{i}. {result['name']}")
             result['type'] = 'artist'
@@ -817,6 +817,8 @@ class ZSpotify:
         print("Enter 'all' to download all items")
         print("Enter 'exit' to exit")
         selection = input(">>>")
+        while selection == "":
+            selection = input(">>>")
         if selection == "exit":
             return False
         if selection == "all":
@@ -831,10 +833,10 @@ class ZSpotify:
                     self.download_artist(result['id'])
             return True
         for item in self.split_input(selection):
-            if int(item) >= len(full_results):
+            if int(item) >= len(full_results) + 1:
                 print("Invalid selection")
                 return False
-            result = full_results[int(item)]
+            result = full_results[int(item) - 1]
             if result['type'] == 'track':
                 self.download_track(result['id'])
             elif result['type'] == 'album':
@@ -913,6 +915,9 @@ class ZSpotify:
                         self.download_by_url(url)
         elif len(sys.argv) <= 1:
             self.args.search = input("Search: ")
+            while self.args.search == "":
+                print("Please try again or press CTRL-C to terminate.")
+                self.args.search = input("Search: ")
             if self.args.search:
                 self.search(self.args.search)
             else:
