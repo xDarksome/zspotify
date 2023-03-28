@@ -1,4 +1,7 @@
-from zspotify.zspotify_api import ZSpotifyApi
+try:
+    from .zspotify_api import ZSpotifyApi
+except ImportError:
+    from zspotify_api import ZSpotifyApi
 
 from base64 import b64encode
 from getpass import getpass
