@@ -127,6 +127,13 @@ class archive:
 
 
 # UTILS
+class Style():
+    RED = "\033[31m"
+    GREEN = "\033[32m"
+    BLUE = "\033[34m"
+    RESET = "\033[0m"
+
+
 class ZSpotify:
 
     def __init__(self):
@@ -268,6 +275,7 @@ class ZSpotify:
 
     def splash(self):
         """Displays splash screen"""
+        print(Style.GREEN)
         print(
             """
     ███████ ███████ ██████   ██████  ████████ ██ ███████ ██    ██
@@ -277,6 +285,7 @@ class ZSpotify:
     ███████ ███████ ██       ██████     ██    ██ ██         ██
         """
         )
+        print(Style.RESET)
         print(f"version: {__version__}")
 
     def split_input(self, selection):
@@ -785,7 +794,7 @@ class ZSpotify:
             print("No results found")
             return False
         print("Search results:")
-        print("###TRACKS###")
+        print(f"{Style.GREEN}TRACKS{Style.RESET}")
         full_results = []
         i = 1
         for result in results['tracks']:
@@ -793,19 +802,19 @@ class ZSpotify:
             result['type'] = 'track'
             full_results.append(result)
             i += 1
-        print("\n###ALBUMS###")
+        print(f"\n{Style.GREEN}ALBUMS{Style.RESET}")
         for result in results['albums']:
             print(f"{i}. {result['artists']} - {result['name']}")
             result['type'] = 'album'
             full_results.append(result)
             i += 1
-        print("\n###PLAYLISTS###")
+        print(f"\n{Style.GREEN}PLAYLISTS{Style.RESET}")
         for result in results['playlists']:
             print(f"{i}. {result['name']}")
             result['type'] = 'playlist'
             full_results.append(result)
             i += 1
-        print("\n###ARTISTS###")
+        print(f"\n{Style.GREEN}ARTISTS{Style.RESET}")
         for result in results['artists']:
             print(f"{i}. {result['name']}")
             result['type'] = 'artist'
