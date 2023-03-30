@@ -147,5 +147,11 @@ docker-compose.yaml
 docker-compose.dev.yml
 *.bak
 
+# dev helper
+dev.py
+
 # VSCode
 .vscode
+
+# PyCharm
+.idea

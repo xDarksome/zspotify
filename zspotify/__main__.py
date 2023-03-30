@@ -30,7 +30,7 @@ except metadata.PackageNotFoundError:
     __version__ = "unknown"
 
 
-class archive:
+class Archive:
 
     def __init__(self, file):
         self.file = file
@@ -112,7 +112,7 @@ class archive:
 
 
 # UTILS
-class Style():
+class Style:
     RED = "\033[31m"
     GREEN = "\033[32m"
     BLUE = "\033[34m"
@@ -145,7 +145,7 @@ class ZSpotify:
         self.not_skip_existing = self.args.not_skip_existing
         self.skip_downloaded = self.args.skip_downloaded
         self.archive_file = self.args.config_dir / self.args.archive
-        self.archive = archive(self.archive_file)
+        self.archive = Archive(self.archive_file)
 
     def parse_args(self):
         parser = argparse.ArgumentParser()
@@ -302,9 +302,9 @@ class ZSpotify:
             value = value.replace(i, "")
         return value.replace("|", "-")
 
-    def zfill(self, value, len: int = 2):
+    def zfill(self, value, length: int = 2):
         """Returns fill the strings with zeros"""
-        return str(value).zfill(len)
+        return str(value).zfill(length)
 
     def login(self):
         """Login to Spotify"""
