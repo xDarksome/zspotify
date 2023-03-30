@@ -3,11 +3,9 @@ try:
 except ImportError:
     from zspotify_api import ZSpotifyApi
 
-from base64 import b64encode
 from getpass import getpass
 import importlib.metadata as metadata
 from mutagen import id3
-from mutagen.oggvorbis import OggVorbis
 from pathlib import Path
 from threading import Thread
 from tqdm import tqdm
@@ -403,27 +401,6 @@ class ZSpotify:
                         data=albumart,
                     )
             # TCON Genre - TODO
-            tags.save()
-        elif extension == 'ogg':
-            tags = OggVorbis(filename)
-            if artist is not None:
-                tags["ARTIST"] = artist
-            if name is not None:
-                tags["TITLE"] = name
-            if album_name is not None:
-                tags["ALBUM"] = album_name
-            if release_year is not None:
-                tags["DATE"] = release_year
-            if disc_number is not None:
-                tags["DISCNUMBER"] = str(disc_number)
-            if track_number is not None:
-                tags["TRACKNUMBER"] = str(track_number)
-            if track_id_str is not None:
-                tags["DESCRIPTION"] = "https://open.spotify.com/track/" + track_id_str
-            if image_url is not None:
-                albumart = requests.get(image_url).content if image_url else None
-                if albumart:
-                    tags["METADATA_BLOCK_PICTURE"] = b64encode(albumart).decode("ascii")
             tags.save()
         # Use music_tag for other file formats
         else:
