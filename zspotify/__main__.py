@@ -460,7 +460,12 @@ class ZSpotify:
         if self.args.skip_downloaded and self.archive.exists(track_id):
             print(f"Skipping {track_id} - Already Downloaded")
             return True
+
         track = self.zs_api.get_audio_info(track_id)
+
+        if track is None:
+            print(f"Skipping {track_id} - Could not get track info")
+            return True
 
         if not track['is_playable']:
             print(f"Skipping {track['audio_name']} - Not Available")
