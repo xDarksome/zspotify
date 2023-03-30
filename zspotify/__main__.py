@@ -30,17 +30,6 @@ except metadata.PackageNotFoundError:
     __version__ = "unknown"
 
 
-def main():
-    """Creates an instance of ZSpotify"""
-    zs = ZSpotify()
-
-    try:
-        zs.start()
-    except KeyboardInterrupt:
-        print("Interrupted by user")
-        sys.exit(0)
-
-
 class archive:
 
     def __init__(self, file):
@@ -91,30 +80,28 @@ class archive:
     def get_ids_from_old_archive(self, old_archive_file):
         archive = []
         folder = old_archive_file.parent
-        if old_archive_file.exists():
-            with open(old_archive_file, "r", encoding="utf-8") as f:
-                for line in f.readlines():
-                    song = line.split("\t")
-                    try:
-                        track_id = song[0]
-                        timestamp = song[1]
-                        artist = song[2]
-                        track_name = song[3]
-                        file_name = song[4]
-                        fullpath = None
-                        if (folder / file_name).exists():
-                            fullpath = str(folder / file_name)
+        with open(old_archive_file, "r", encoding="utf-8") as f:
+            for line in f.readlines():
+                song = line.split("\t")
+                try:
+                    track_id = song[0]
+                    timestamp = song[1]
+                    artist = song[2]
+                    track_name = song[3]
+                    file_name = song[4]
+                    fullpath = None
+                    if (folder / file_name).exists():
+                        fullpath = str(folder / file_name)
 
-                        archive.append({"track_id": track_id,
-                                        "track_artist": artist,
-                                        "track_name": track_name,
-                                        "timestamp": timestamp,
-                                        "fullpath": fullpath})
-                    except Exception as e:
-                        print("Error parsing line: {}".format(line))
-                        print(e)
-            return archive
-        return None
+                    archive.append({"track_id": track_id,
+                                    "track_artist": artist,
+                                    "track_name": track_name,
+                                    "timestamp": timestamp,
+                                    "fullpath": fullpath})
+                except Exception as e:
+                    print("Error parsing line: {}".format(line))
+                    print(e)
+        return archive
 
     # TODO: Current unused function for future functionality
     # def delete_not_existing(self):
@@ -428,14 +415,18 @@ class ZSpotify:
     # ARCHIVE
     def archive_migration(self):
         """Migrates the old archive to the new one"""
-        for path in [
-                self.config_dir,
-                self.download_dir,
-                self.music_dir,
-                self.episodes_dir]:
-            tracks = self.archive.get_ids_from_old_archive(path / ".song_archive")
-            if tracks:
+        paths_to_check = (self.config_dir,
+                          self.download_dir,
+                          self.music_dir,
+                          self.episodes_dir)
+
+        for path in paths_to_check:
+            old_archive_path = path / ".song_archive"
+
+            if old_archive_path.exists():
                 print("Found old archive, migrating to new one...")
+                tracks = self.archive.get_ids_from_old_archive(old_archive_path)
+
                 for track in tracks:
                     if self.archive.exists(track['track_id']):
                         print(
@@ -448,12 +439,15 @@ class ZSpotify:
                                      timestamp=track['timestamp'],
                                      audio_type="music",
                                      save=False)
+
                 self.archive.save()
-            try:
-                os.remove(path / ".song_archive")
-            except OSError:
-                pass
-            print(f"Migration complete from file: {str(path / '.song_archive')}")
+
+                try:
+                    os.remove(path / ".song_archive")
+                except OSError:
+                    print(f"Unable to remove old archive: {str(old_archive_path)}")
+
+                print(f"Migration complete from: {str(old_archive_path)}")
 
     # DOWNLOADERS
     def download_track(self, track_id, path=None, caller=None):
@@ -929,6 +923,17 @@ class ZSpotify:
                 self.search(self.args.search)
             else:
                 print("Invalid input")
+
+
+def main():
+    """Creates an instance of ZSpotify"""
+    zs = ZSpotify()
+
+    try:
+        zs.start()
+    except KeyboardInterrupt:
+        print("Interrupted by user")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
