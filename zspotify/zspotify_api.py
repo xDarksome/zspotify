@@ -56,6 +56,11 @@ class ZSpotifyApi:
             value = value.replace(i, "")
         return value.replace("|", "-")
 
+    def init_token(self):
+        self.session = Session.Builder().stored_file(stored_credentials=str(self.credentials)).create()
+        self.token = self.session.tokens().get("user-read-email")
+        self.token_for_saved = self.session.tokens().get("user-library-read")
+
     def login(self, username=None, password=None):
         """Authenticates with Spotify and saves credentials to a file"""
 
@@ -63,10 +68,7 @@ class ZSpotifyApi:
 
         if self.credentials.is_file():
             try:
-                self.session = Session.Builder().stored_file(
-                    stored_credentials=self.credentials).create()
-                self.token = self.session.tokens().get("user-read-email")
-                self.token_for_saved = self.session.tokens().get("user-library-read")
+                self.init_token()
                 self.check_premium()
                 return True
             except RuntimeError:
@@ -78,10 +80,7 @@ class ZSpotifyApi:
                     self.credentials).create()
                 shutil.copyfile("credentials.json", self.credentials)
                 os.remove("credentials.json")
-                self.session = Session.Builder().stored_file(
-                    stored_credentials=self.credentials).create()
-                self.token = self.session.tokens().get("user-read-email")
-                self.token_for_saved = self.session.tokens().get("user-library-read")
+                self.init_token()
                 self.check_premium()
                 self.config_dir.mkdir(exist_ok=True)
                 shutil.copyfile("credentials.json", self.credentials)
@@ -204,6 +203,23 @@ class ZSpotifyApi:
                 'playlist': playlist_id_str, 'episode': episode_id_str,
                 'show': show_id_str, 'artist': artist_id_str}
 
+    def authorized_get_request(self, url, retry_count=0, **kwargs):
+        """Makes a request to the Spotify API with the authorization token"""
+        if retry_count > 3:
+            raise RuntimeError("Connection Error: Too many retries")
+
+        try:
+            response = requests.get(url,
+                                    headers={"Authorization": f"Bearer {self.token}"},
+                                    **kwargs)
+            if response.status_code == 401:
+                print("Token expired, refreshing...")
+                self.init_token()
+                return self.authorized_get_request(url, retry_count + 1, **kwargs)
+            return response
+        except requests.exceptions.ConnectionError:
+            return self.authorized_get_request(url, retry_count + 1, **kwargs)
+
     def conv_artist_format(self, artists):
         """Returns converted artist format"""
         formatted = ""
@@ -233,11 +249,10 @@ class ZSpotifyApi:
         try:
 
             info = json.loads(
-                requests.get(
+                self.authorized_get_request(
                     "https://api.spotify.com/v1/tracks?ids="
                     + track_id
-                    + "&market=from_token",
-                    headers={"Authorization": f"Bearer {self.token}"},
+                    + "&market=from_token"
                 ).text
             )
 
@@ -293,8 +308,8 @@ class ZSpotifyApi:
                     'release_date': release_date}
         except Exception as e:
             print("###   get_song_info - FAILED TO QUERY METADATA   ###")
+            print("track_id:", track_id)
             print(e)
-            print(track_id, info)
             return None
 
     def get_all_user_playlists(self):
@@ -304,12 +319,9 @@ class ZSpotifyApi:
         offset = 0
 
         while True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-            params = {"limit": limit, "offset": offset}
-            resp = requests.get(
+            resp = self.authorized_get_request(
                 "https://api.spotify.com/v1/me/playlists",
-                headers=headers,
-                params=params).json()
+                params={"limit": limit, "offset": offset}).json()
             offset += limit
             playlists.extend(resp["items"])
 
@@ -325,12 +337,9 @@ class ZSpotifyApi:
         audios = []
 
         while True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-            params = {"limit": limit, "offset": offset}
-            resp = requests.get(
+            resp = self.authorized_get_request(
                 f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks",
-                headers=headers,
-                params=params,
+                params={"limit": limit, "offset": offset},
             ).json()
             offset += limit
             for song in resp["items"]:
@@ -345,10 +354,8 @@ class ZSpotifyApi:
 
     def get_playlist_info(self, playlist_id):
         """Returns information scraped from playlist"""
-        headers = {"Authorization": f"Bearer {self.token}"}
-        resp = requests.get(
-            f"https://api.spotify.com/v1/playlists/{playlist_id}?fields=name,owner(display_name)&market=from_token",
-            headers=headers,
+        resp = self.authorized_get_request(
+            f"https://api.spotify.com/v1/playlists/{playlist_id}?fields=name,owner(display_name)&market=from_token"
         ).json()
         return {
             "name": resp["name"].strip(),
@@ -363,15 +370,11 @@ class ZSpotifyApi:
         include_groups = "album,compilation"
 
         while True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-            params = {
-                "limit": limit,
-                "include_groups": include_groups,
-                "offset": offset}
-            resp = requests.get(
+            resp = self.authorized_get_request(
                 f"https://api.spotify.com/v1/albums/{album_id}/tracks",
-                headers=headers,
-                params=params,
+                params={"limit": limit,
+                        "include_groups": include_groups,
+                        "offset": offset},
             ).json()
             offset += limit
             for song in resp["items"]:
@@ -388,9 +391,8 @@ class ZSpotifyApi:
 
     def get_album_info(self, album_id):
         """Returns album name"""
-        headers = {"Authorization": f"Bearer {self.token}"}
-        resp = requests.get(
-            f"https://api.spotify.com/v1/albums/{album_id}", headers=headers
+        resp = self.authorized_get_request(
+            f"https://api.spotify.com/v1/albums/{album_id}"
         ).json()
 
         artists = []
@@ -412,30 +414,25 @@ class ZSpotifyApi:
 
     # def get_artist_albums(self, artist_id):
     #    """Returns artist's albums"""
-    #    headers = {"Authorization": f"Bearer {self.token}"}
-    #    resp = requests.get(
-    #        f"https://api.spotify.com/v1/artists/{artist_id}/albums", headers=headers
+    #    resp = self.authorized_get_request(
+    #        f"https://api.spotify.com/v1/artists/{artist_id}/albums"
     #    ).json()
     #    # Return a list each album's id
     #    return [resp["items"][i]["id"] for i in range(len(resp["items"]))]
 
     def get_artist_albums(self, artists_id):
-        """returns list of albums in a artist"""
+        """returns list of albums in an artist"""
 
         offset = 0
         limit = 50
         include_groups = "album,compilation"
 
-        headers = {"Authorization": f"Bearer {self.token}"}
-        params = {
-            "limit": limit,
-            "include_groups": include_groups,
-            "offset": offset}
         albums = []
-        resp = requests.get(
+        resp = self.authorized_get_request(
             f"https://api.spotify.com/v1/artists/{artists_id}/albums",
-            headers=headers,
-            params=params,
+            params={"limit": limit,
+                    "include_groups": include_groups,
+                    "offset": offset},
         ).json()
         # print("###   Album Name:", resp['items'], "###")
         for album in resp["items"]:
@@ -458,12 +455,9 @@ class ZSpotifyApi:
         limit = 50
 
         while True:
-            headers = {"Authorization": f"Bearer {self.token_for_saved}"}
-            params = {"limit": limit, "offset": offset}
-            resp = requests.get(
+            resp = self.authorized_get_request(
                 "https://api.spotify.com/v1/me/tracks",
-                headers=headers,
-                params=params).json()
+                params={"limit": limit, "offset": offset}).json()
             offset += limit
             for song in resp["items"]:
                 songs.append({'id': song["track"]["id"],
@@ -481,11 +475,11 @@ class ZSpotifyApi:
 
         try:
             info = json.loads(
-                requests.get(
+                self.authorized_get_request(
                     "https://api.spotify.com/v1/artists/"
-                    + artist_id,
-                    headers={
-                        "Authorization": f"Bearer {self.token}"}).text)
+                    + artist_id
+                ).text
+            )
 
             return {
                 "name": self.sanitize_data(
@@ -493,14 +487,13 @@ class ZSpotifyApi:
                     info["genres"])}
         except Exception as e:
             print("###   get_artist_info - FAILED TO QUERY METADATA   ###")
+            print("artist_id:", artist_id)
             print(e)
-            print(artist_id, info)
 
     def get_episode_info(self, episode_id_str):
         info = json.loads(
-            requests.get(
-                "https://api.spotify.com/v1/episodes/" + episode_id_str,
-                headers={"Authorization": f"Bearer {self.token}"},
+            self.authorized_get_request(
+                "https://api.spotify.com/v1/episodes/" + episode_id_str
             ).text
         )
         if not info:
@@ -541,12 +534,9 @@ class ZSpotifyApi:
         limit = 50
 
         while True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-            params = {"limit": limit, "offset": offset}
-            resp = requests.get(
+            resp = self.authorized_get_request(
                 f"https://api.spotify.com/v1/shows/{show_id_str}/episodes",
-                headers=headers,
-                params=params,
+                params={"limit": limit, "offset": offset},
             ).json()
             offset += limit
             for episode in resp["items"]:
@@ -562,10 +552,8 @@ class ZSpotifyApi:
 
     def get_show_info(self, show_id_str):
         """returns show info"""
-        headers = {"Authorization": f"Bearer {self.token}"}
-        resp = requests.get(
-            f"https://api.spotify.com/v1/shows/{show_id_str}",
-            headers=headers,
+        resp = self.authorized_get_request(
+            f"https://api.spotify.com/v1/shows/{show_id_str}"
         ).json()
         return {"name": self.sanitize_data(resp["name"]),
                 "publisher": resp["publisher"],
@@ -643,15 +631,14 @@ class ZSpotifyApi:
     def search(self, search_term):
         """Searches Spotify's API for relevant data"""
 
-        resp = requests.get(
+        resp = self.authorized_get_request(
             "https://api.spotify.com/v1/search",
-            {
+            params={
                 "limit": self.limit,
                 "offset": "0",
                 "q": search_term,
                 "type": "track,album,playlist,artist"
-            },
-            headers={"Authorization": f"Bearer {self.token}"},
+            }
         )
         ret_tracks = []
         tracks = resp.json()["tracks"]["items"]
@@ -662,7 +649,7 @@ class ZSpotifyApi:
                 else:
                     explicit = ""
                 ret_tracks.append({'id': track['id'], 'name': explicit + track["name"],
-                                  "artists": ','.join([artist['name'] for artist in track['artists']])})
+                                   "artists": ','.join([artist['name'] for artist in track['artists']])})
         ret_albums = []
         albums = resp.json()["albums"]["items"]
         if len(albums) > 0:
