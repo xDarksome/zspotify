@@ -5,3 +5,5 @@ music_tag
 pydub
 Pillow
 tqdm
+setuptools
+requests
