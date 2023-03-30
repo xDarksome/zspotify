@@ -461,40 +461,49 @@ class ZSpotify:
             print(f"Skipping {track_id} - Already Downloaded")
             return True
         track = self.zs_api.get_audio_info(track_id)
+
         if not track['is_playable']:
             print(f"Skipping {track['audio_name']} - Not Available")
             return True
 
+        audio_name = track['audio_name']
+        audio_format = self.args.audio_format
+        audio_number = track['audio_number']
+        artist_name = track['artist_name']
+        album_name = track['album_name']
+
         if caller == "album":
             basepath = path or self.music_dir
-            filename = self.sanitize_data(
-                f"{track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
+            filename = f"{audio_number}. {audio_name}.{audio_format}"
+
+            # Add album name to filename
             if self.album_in_filename:
-                filename = self.sanitize_data(
-                    f"{track['album']} {track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
-            fullpath = basepath / filename
+                filename = f"{album_name} " + filename
+
         elif caller == "playlist":
             basepath = path or self.music_dir
-            filename = f"{track['artist_name']} - {track['audio_name']}.{self.args.audio_format}"
+            filename = f"{audio_name}.{audio_format}"
+
+            # Add album name to filename
             if self.album_in_filename:
-                filename = self.sanitize_data(
-                    f"{track['artist_name']} - {track['album']} - {track['audio_name']}.{self.args.audio_format}")
-            fullpath = basepath / filename
+                filename = f"{album_name} - " + filename
+            filename = f"{artist_name} - " + filename
+
         elif caller == "show":
             basepath = path or self.episodes_dir
-            filename = self.sanitize_data(
-                f"{track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
-            fullpath = basepath / filename
+            filename = f"{audio_number}. {audio_name}.{audio_format}"
+
         elif caller == "episode":
             basepath = path or self.episodes_dir
-            filename = self.sanitize_data(
-                f"{track['artist_name']} - {track['audio_number']}. {track['audio_name']}.{self.args.audio_format}")
-            fullpath = basepath / filename
+            filename = f"{artist_name} - {audio_number}. {audio_name}.{audio_format}"
+
         else:
             basepath = path or self.music_dir
-            filename = self.sanitize_data(
-                f"{track['artist_name']} - {track['audio_name']}.{self.args.audio_format}")
-            fullpath = basepath / filename
+            filename = f"{artist_name} - {audio_name}.{audio_format}"
+
+        # Sanitize and set full path once
+        filename = self.sanitize_data(filename)
+        fullpath = basepath / filename
 
         if self.not_skip_existing and fullpath.exists():
             print(f"Skipping {filename} - Already downloaded")
@@ -521,19 +530,19 @@ class ZSpotify:
             progress_bar.update(progress_bar.total - progress_bar.n)
         print(f"Converting {filename}")
         self.archive.add(track_id,
-                         artist=track['artist_name'],
-                         track_name=track['audio_name'],
+                         artist=artist_name,
+                         track_name=audio_name,
                          fullpath=fullpath,
                          audio_type="music")
         downloader.join()
         print(f"Set audiotags {filename}")
         self.set_audio_tags(fullpath,
-                            artists=track['artist_name'],
-                            name=track['audio_name'],
-                            album_name=track['album_name'],
+                            artists=artist_name,
+                            name=audio_name,
+                            album_name=album_name,
                             release_year=track['release_year'],
                             disc_number=track['disc_number'],
-                            track_number=track['audio_number'],
+                            track_number=audio_number,
                             track_id_str=track['scraped_song_id'],
                             image_url=track['image_url'])
         print(f"Finished downloading {filename}")
@@ -619,19 +628,24 @@ class ZSpotify:
         for song in songs:
             if song["disc_number"] > 1:
                 disc_number_flag = True
-        print(f"Downloading {album['artists']} - {album['name']} album")
-        basepath = \
-            self.music_dir \
-            / self.sanitize_data(album['artists']) \
-            / self.sanitize_data(f"{album['release_date']} - {album['name']}")
+
+        # Sanitize beforehand
+        artists = self.sanitize_data(album['artists'])
+        album_name = self.sanitize_data(f"{album['release_date']} - {album['name']}")
+
+        print(f"Downloading {artists} - {album_name} album")
+
+        # Concat download path
+        basepath = self.music_dir / artists / album_name
+
         for song in songs:
+            # Append disc number to filepath if more than 1 disc
             if disc_number_flag:
-                basepath = \
-                    self.music_dir \
-                    / self.sanitize_data(album['artists']) \
-                    / self.sanitize_data(f"{album['release_date']} - {album['name']}") \
-                    / self.sanitize_data(f"{self.zfill(song['disc_number'])}")
+                disc_number = self.sanitize_data(f"{self.zfill(song['disc_number'])}")
+                basepath = basepath / disc_number
+
             self.download_track(song['id'], basepath, "album")
+
         print(
             f"Finished downloading {album['artists']} - {album['name']} album")
         return True
@@ -697,15 +711,17 @@ class ZSpotify:
             print(f"Skipping {episode['audio_name']} - Not Available")
             return True
 
+        # Sanitize data beforehand
+        show_name = self.sanitize_data(episode['show_name'])
+        audio_name = self.sanitize_data(episode['audio_name'])
+        audio_format = self.args.audio_format
+
         basepath = self.episodes_dir
-        filename = \
-            self.sanitize_data(f"{episode['show_name']} - {episode['audio_name']}.{self.args.audio_format}")
+        filename = f"{show_name} - {audio_name}.{audio_format}"
 
         if caller == "show":
-            basepath = \
-                self.episodes_dir / self.sanitize_data(episode['show_name'])
-            filename = self.sanitize_data(
-                f"{episode['audio_name']}.{self.args.audio_format}")
+            basepath = self.episodes_dir / show_name
+            filename = f"{audio_name}.{audio_format}"
 
         fullpath = basepath / filename
 
