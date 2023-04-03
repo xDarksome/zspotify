@@ -639,11 +639,12 @@ class ZSpotify:
 
         for song in songs:
             # Append disc number to filepath if more than 1 disc
+            newBasePath = basepath
             if disc_number_flag:
                 disc_number = self.sanitize_data(f"{self.zfill(song['disc_number'])}")
-                basepath = basepath / disc_number
+                newBasePath = basepath / disc_number
 
-            self.download_track(song['id'], basepath, "album")
+            self.download_track(song['id'], newBasePath, "album")
 
         print(
             f"Finished downloading {album['artists']} - {album['name']} album")
