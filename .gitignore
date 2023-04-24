@@ -164,3 +164,4 @@ cython_debug/
 
 # Spotify Credentials
 credentials*
+*.bak

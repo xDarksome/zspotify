@@ -96,11 +96,9 @@ class ZSpotifyApi:
             if self.session.get_user_attribute(
                     "type") == "premium" or self.force_premium:
                 self.quality = AudioQuality.VERY_HIGH
-                print("username:", json.load(open(self.credentials))['username'],
-                      "[ DETECTED PREMIUM ACCOUNT - USING VERY_HIGH QUALITY ]\n")
+                print("[ DETECTED PREMIUM ACCOUNT - USING VERY_HIGH QUALITY ]\n")
             else:
-                print("username:", json.load(open(self.credentials))['username'],
-                      "[ DETECTED FREE ACCOUNT - USING HIGH QUALITY ]\n")
+                print("[ DETECTED FREE ACCOUNT - USING HIGH QUALITY ]\n")
                 self.quality = AudioQuality.HIGH
         else:
             except_msg = "You must login first"
@@ -435,13 +433,16 @@ class ZSpotifyApi:
                     "offset": offset},
         ).json()
         # print("###   Album Name:", resp['items'], "###")
+        print("###   Albums" "###")
         for album in resp["items"]:
             if m := re.search("(\\d{4})", album["release_date"]):
+                print(" #", album["name"])
                 albums.append({"id": album["id"],
                                "name": album["name"],
                                "release_date": m.group(1),
                                "total_tracks": album["total_tracks"]})
             else:
+                print(" #", album["name"])
                 albums.append({"id": album["id"],
                                "name": album["name"],
                                "release_date": album["release_date"],

@@ -1,5 +1,11 @@
 # Changelog
 
+**v2.0.3 (24 Apr 2023)**
+- show albums before download
+
+**v2.0.2 (30 Mar 2023)**
+- Refresh token on expiration / Screeper
+
 **v2.0.1 (30 Mar 2023)**
 - Refresh token on expiration / Screeper
 
