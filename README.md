@@ -52,6 +52,7 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
+  -v, --version         Shows the current version of zspotify
   -ap, --all-playlists  Downloads all saved playlist from your library
   -sp, --select-playlists
                         Downloads a saved playlist from your library
@@ -77,7 +78,6 @@ options:
                         Folder to save the downloaded music files
   -pd EPISODES_DIR, --episodes-dir EPISODES_DIR
                         Folder to save the downloaded episodes files
-  -v, --version         Shows the current version of ZSpotify
   -af {mp3,ogg}, --audio-format {mp3,ogg}
                         Audio format to download the tracks
   --album-in-filename   Adds the album name to the filename
@@ -100,7 +100,12 @@ options:
 
 ## Changelog
 
-[View Changelog Here](https://github.com/jsavargas/zspotify/blob/master/CHANGELOG.md)
+[View changelog here](https://github.com/jsavargas/zspotify/blob/master/CHANGELOG.md)
+
+
+## Disclaimer
+
+We recommend using a burner account to avoid any possible account bans.
 
 
 ## Contributing
