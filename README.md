@@ -6,23 +6,30 @@
 zspotify is a Spotify downloader that enables users to find and download songs.
 
 
-## Requirements
+## Installation
 
-- Python 3.9 or greater
-- ffmpeg
-
-> :warning: ffmpeg should be installed from your package manager of choice on Linux or by
-downloading the binaries from [ffmpeg.org](https://ffmpeg.org) and placing them in your %PATH% in Windows.
+1. Install [requirements](#requirements)
+2. Install zspotify using either [pip](#pip) or [Docker](#docker)
 
 
-## Installation (pip)
+### Requirements
+
+- Python (3.10 or greater)
+  - [Python download (Windows)](https://www.python.org/downloads/)
+- FFmpeg
+  - [FFmpeg download (Windows)](https://ffmpeg.org/download.html)
+  - [FFmpeg installation guide (Windows)](https://www.wikihow.com/Install-FFmpeg-on-Windows)
+
+> :warning: To install Python and FFmpeg on **Linux**, use the preferred package manager for your distribution.
+
+### pip
 
 ```bash
 pip install git+https://github.com/jsavargas/zspotify
 ```
 
 
-## Installation (Docker)
+### Docker
 
 ```bash
 docker pull jsavargas/zspotify
