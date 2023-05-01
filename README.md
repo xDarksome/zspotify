@@ -1,15 +1,15 @@
-# zspotify
+# ZSpotify
 
 [![Docker CI](https://github.com/jsavargas/zspotify/actions/workflows/docker-ci.yml/badge.svg)](https://github.com/jsavargas/zspotify/actions/workflows/docker-ci.yml)
 [![GPLv3](https://img.shields.io/github/license/jsavargas/zspotify)](https://opensource.org/license/gpl-3-0)
 
-zspotify is a Spotify downloader that enables users to find and download songs.
+ZSpotify is a Spotify downloader that enables users to find and download songs.
 
 
 ## Installation
 
 1. Install [requirements](#requirements)
-2. Install zspotify using either [pip](#pip) or [Docker](#docker)
+2. Install ZSpotify using either [pip](#pip) or [Docker](#docker)
 
 
 ### Requirements
@@ -120,4 +120,4 @@ to discuss what you would like to change.
 
 ## Acknowledgements
 
-- [Footsiefat](https://github.com/Footsiefat) for original zspotify implementation
+- [Footsiefat](https://github.com/Footsiefat) for original ZSpotify implementation
