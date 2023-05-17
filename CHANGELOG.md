@@ -1,5 +1,8 @@
 # Changelog
 
+**v2.0.4 (18 May 2023)**
+- Uprev librespot-org and set minimum version
+
 **v2.0.3 (24 Apr 2023)**
 - show albums before download
 

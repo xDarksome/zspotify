@@ -1,4 +1,4 @@
-git+https://github.com/kokarare1212/librespot-python#egg=librespot
+git+https://github.com/kokarare1212/librespot-python#egg=librespot>=1.6.3
 appdirs
 mutagen
 music_tag
