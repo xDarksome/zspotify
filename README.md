@@ -8,26 +8,23 @@ ZSpotify is a Spotify downloader that enables users to find and download songs.
 
 ## Installation
 
-1. Install [requirements](#requirements)
-2. Install ZSpotify using either [pip](#pip) or [Docker](#docker)
-
-
-### Requirements
-
-- Python (3.10 or greater)
-  - [Python download (Windows)](https://www.python.org/downloads/)
-- FFmpeg
-  - [FFmpeg download (Windows)](https://ffmpeg.org/download.html)
-  - [FFmpeg installation guide (Windows)](https://www.wikihow.com/Install-FFmpeg-on-Windows)
-
-> :warning: To install Python and FFmpeg on **Linux**, use the preferred package manager for your distribution.
+Install ZSpotify using either [pip](#pip) or [Docker](#docker)
 
 ### pip
+
+1. **Install required dependencies:**
+    - Python (3.10 or greater)
+        - [Python download (Windows)](https://www.python.org/downloads/)
+    - FFmpeg
+        - [FFmpeg download (Windows)](https://ffmpeg.org/download.html)
+        - [FFmpeg installation guide (Windows)](https://www.wikihow.com/Install-FFmpeg-on-Windows)
+   > :warning: To install Python and FFmpeg on **Linux**, use the preferred package manager for your distribution.
+
+2. **Install ZSpotify:**
 
 ```bash
 pip install git+https://github.com/jsavargas/zspotify
 ```
-
 
 ### Docker
 
@@ -97,16 +94,13 @@ options:
                         Bulk download from file with urls
 ```
 
-
 ## Changelog
 
 [View changelog here](https://github.com/jsavargas/zspotify/blob/master/CHANGELOG.md)
 
-
 ## Disclaimer
 
 We recommend using a burner account to avoid any possible account bans.
-
 
 ## Contributing
 
@@ -116,7 +110,6 @@ to discuss what you would like to change.
 - [GitHub Issues](https://github.com/jsavargas/zspotify/issues) of this repository.
 - [DockerHub](https://hub.docker.com/r/jsavargas/zspotify) of this repository.
 - [Discord](https://discord.gg/grCt4AufmC) server of this repository.
-
 
 ## Acknowledgements
 
