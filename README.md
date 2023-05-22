@@ -52,7 +52,7 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -v, --version         Shows the current version of zspotify
+  -v, --version         Shows the current version of ZSpotify
   -ap, --all-playlists  Downloads all saved playlist from your library
   -sp, --select-playlists
                         Downloads a saved playlist from your library

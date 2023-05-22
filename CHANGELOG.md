@@ -1,13 +1,13 @@
 # Changelog
 
+**v2.0.5 (22 May 2023)**
+- Fixed issue caused by filenames being too long / Screeper
+
 **v2.0.4 (18 May 2023)**
 - Uprev librespot-org and set minimum version
 
 **v2.0.3 (24 Apr 2023)**
-- show albums before download
-
-**v2.0.2 (30 Mar 2023)**
-- Refresh token on expiration / Screeper
+- Show albums before downloading
 
 **v2.0.1 (30 Mar 2023)**
 - Refresh token on expiration / Screeper
@@ -28,10 +28,10 @@
 - Sum the size of the images, compares and saves the index of the largest image size
 
 **v1.9.4 (14 Oct 2022)**
-- add cover 640x640
+- Added cover 640x640
 
 **v1.9.3 (30 Sep 2022)**
-- add KeyboardInterrupt control - Control + C
+- Added KeyboardInterrupt control: Ctrl + C
 
 **v1.9.2 (19 Aug 2022)**
 - Added playlist_id support (https://github.com/VicDominguez)
@@ -45,7 +45,7 @@
 - Fix fails at 87%
 
 **v1.8 (23 Oct 2021):**
-- exclude album_type single
+- Exclude album_type single
 - Added progress bar for downloads.
 - Changed welcome banner and removed unnecessary debug print statements.
 - Show single progress bar for entire album.
