@@ -462,33 +462,32 @@ class ZSpotify:
 
             return filename
 
-        match caller:
-            case "album":
-                base_path = path or self.music_dir
-                filename = f"{audio_number}. {audio_name}.{audio_format}"
+        if caller == "album":
+            base_path = path or self.music_dir
+            filename = f"{audio_number}. {audio_name}.{audio_format}"
 
-                if self.album_in_filename:
-                    filename = f"{album_name} " + filename
+            if self.album_in_filename:
+                filename = f"{album_name} " + filename
 
-            case "playlist":
-                base_path = path or self.music_dir
-                filename = f"{audio_name}.{audio_format}"
+        elif caller == "playlist":
+            base_path = path or self.music_dir
+            filename = f"{audio_name}.{audio_format}"
 
-                if self.album_in_filename:
-                    filename = f"{album_name} - " + filename
-                filename = f"{artist_name} - " + filename
+            if self.album_in_filename:
+                filename = f"{album_name} - " + filename
+            filename = f"{artist_name} - " + filename
 
-            case "show":
-                base_path = path or self.episodes_dir
-                filename = f"{audio_number}. {audio_name}.{audio_format}"
+        elif caller == "show":
+            base_path = path or self.episodes_dir
+            filename = f"{audio_number}. {audio_name}.{audio_format}"
 
-            case "episode":
-                base_path = path or self.episodes_dir
-                filename = f"{artist_name} - {audio_number}. {audio_name}.{audio_format}"
+        elif caller == "episode":
+            base_path = path or self.episodes_dir
+            filename = f"{artist_name} - {audio_number}. {audio_name}.{audio_format}"
 
-            case _:
-                base_path = path or self.music_dir
-                filename = f"{artist_name} - {audio_name}.{audio_format}"
+        else:
+            base_path = path or self.music_dir
+            filename = f"{artist_name} - {audio_name}.{audio_format}"
 
         filename = shorten_filename(filename, artist_name, audio_name)
         filename = self.sanitize_data(filename)
