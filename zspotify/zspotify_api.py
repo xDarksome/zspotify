@@ -423,7 +423,7 @@ class ZSpotifyApi:
 
         offset = 0
         limit = 50
-        include_groups = "album,compilation"
+        include_groups = "album,compilation,single"
 
         albums = []
         resp = self.authorized_get_request(
