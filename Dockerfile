@@ -29,7 +29,7 @@ COPY --from=builder /usr/bin/ffprobe /usr/bin/ffprobe
 COPY --from=builder /app/ffmpeg-deps/lib* /usr/lib/
 
 # Copy the wheel file from the builder stage
-COPY --from=builder /app/wheels/*.whl .
+COPY --from=builder /app/wheels/*.whl ./
 
 # Install the wheel file
 RUN pip install --no-deps *.whl
